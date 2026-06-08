@@ -30,21 +30,22 @@ The installed Aura-Call doctor now exposes a first-class readiness verdict. The
 current local ChatGPT browser state is:
 
 ```text
-readiness: not-ok (no-live-managed-browser; warning)
-activeManagedInstance: none
+readiness: not-ok (login-required; blocked)
+activeManagedInstance: live windows-loopback managed Chrome
 chromeGoogleAccount: Bakermaun@gmail.com
+expectedChatgptIdentity: Bakermaun@gmail.com
 ```
 
 Aura-Call can discover managed Windows Chrome state from WSL through
 `windows-loopback`, and MCP can inspect the Windows host through the PowerShell
-probe. Browser prompt automation still needs a refreshed live managed ChatGPT
-profile, an expected provider identity binding, and then a successful real
-ChatGPT prompt proof.
+probe. Browser prompt automation still needs the live ChatGPT auth error/sign-in
+gate cleared in the managed browser, then a successful real ChatGPT prompt
+proof.
 
-After the managed browser is refreshed, a visible Cloudflare, CAPTCHA, Google
-account auth, or other human-verification page should appear in
-`auracall doctor --target chatgpt --json` as `manual-clear-required` or
-`login-required`.
+Blocking pages such as ChatGPT `/api/auth/error`, Cloudflare, CAPTCHA, Google
+account auth, or other human-verification pages should appear in
+`auracall doctor --target chatgpt --json` as `login-required` or
+`manual-clear-required`.
 
 ## Useful Retest Commands
 

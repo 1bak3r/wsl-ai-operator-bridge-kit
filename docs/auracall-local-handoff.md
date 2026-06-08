@@ -24,19 +24,27 @@ This note records the local Aura-Call state that produced this bridge kit.
 - WSL can call Windows PowerShell through the JSONL bridge and preserve a
   stateful PowerShell working directory across commands.
 
-## Remaining Browser Blocker
+## Current Browser Readiness Blocker
 
-The remaining live ChatGPT browser blocker is human verification:
+The installed Aura-Call doctor now exposes a first-class readiness verdict. The
+current local ChatGPT browser state is:
 
 ```text
-Cloudflare challenge detected. Complete the "Just a moment..." check in the
-open browser, then rerun.
+readiness: not-ok (no-live-managed-browser; warning)
+activeManagedInstance: none
+chromeGoogleAccount: Bakermaun@gmail.com
 ```
 
-Aura-Call can launch and discover the managed Windows Chrome profile from WSL
-through `windows-loopback`, and MCP can inspect the Windows process and
-DevTools port. Browser prompt automation still needs the visible Cloudflare
-challenge to be cleared before a successful real ChatGPT prompt can be claimed.
+Aura-Call can discover managed Windows Chrome state from WSL through
+`windows-loopback`, and MCP can inspect the Windows host through the PowerShell
+probe. Browser prompt automation still needs a refreshed live managed ChatGPT
+profile, an expected provider identity binding, and then a successful real
+ChatGPT prompt proof.
+
+After the managed browser is refreshed, a visible Cloudflare, CAPTCHA, Google
+account auth, or other human-verification page should appear in
+`auracall doctor --target chatgpt --json` as `manual-clear-required` or
+`login-required`.
 
 ## Useful Retest Commands
 
@@ -55,4 +63,3 @@ auracall --chatgpt \
 ./scripts/run-node22-npx.sh mcporter call auracall.sessions limit:5 --config examples/mcporter.auracall.json
 ./scripts/run-node22-npx.sh mcporter call auracall.response_read id:<session-id> --config examples/mcporter.auracall.json
 ```
-

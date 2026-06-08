@@ -44,6 +44,15 @@ probe. Browser prompt automation still needs the visible ChatGPT challenge
 cleared, the live ChatGPT provider session verified in the managed browser, and
 then a successful real ChatGPT prompt proof.
 
+A low-risk CDP reload/focus attempt against the current tab did not clear the
+page: before and after were both `https://chatgpt.com/`, title
+`Just a moment...`, with zero visible composer or form controls.
+
+Doctor readiness now reports failed/missing browser-tools probes as
+`browser-probe-error` before falling back to identity state. That avoids a
+weaker `identity-unverified` diagnosis when concurrent setup/doctor probes
+contend for the managed browser operation lock.
+
 Blocking pages such as ChatGPT `/api/auth/error`, Cloudflare, CAPTCHA, Google
 account auth, or other human-verification pages should appear in
 `auracall doctor --target chatgpt --json` as `login-required` or

@@ -7,6 +7,7 @@ This repo packages the reusable pieces from local Aura-Call/Codex work:
 - a JSONL bridge from WSL to Windows PowerShell;
 - Node 22-aware wrappers for MCP/`npx` tools from WSL;
 - an example MCPorter config for installed and local Aura-Call MCP servers;
+- an exported Aura-Call patch with the local browser/MCP/runtime improvements;
 - notes for pairing Aura-Call with `agent-browser` and Windows Chrome from WSL.
 
 The goal is to make local agent tooling more reliable without exposing a broad
@@ -111,6 +112,27 @@ Typical smoke checks:
 ./scripts/run-node22-npx.sh mcporter list auracall --config examples/mcporter.auracall.json
 ./scripts/run-node22-npx.sh mcporter call auracall.windows_powershell_probe probe:get_location --config examples/mcporter.auracall.json
 ```
+
+## Aura-Call Implementation Patch
+
+The local Aura-Call checkout could not be pushed to `ecochran76/auracall`
+because GitHub rejected the `1bak3r` credentials for that repository. The
+implementation is preserved here as:
+
+```text
+patches/auracall-agentic-browser-runtime-bridge.patch
+```
+
+Apply it from a clean Aura-Call checkout with:
+
+```bash
+git am /path/to/wsl-ai-operator-bridge-kit/patches/auracall-agentic-browser-runtime-bridge.patch
+```
+
+The patch contains the browser readiness gates, ChatGPT blocking-state
+classification, MCP runtime-control and response-read tools, WSL-to-Windows
+PowerShell probe support, local install/runtime fixes, focused tests, and
+machine-local handoff docs.
 
 ## Current Aura-Call Notes
 

@@ -1,11 +1,11 @@
-From 28e8d112d9d5167871c30df5767c13291b0cb71f Mon Sep 17 00:00:00 2001
+From 7557d53b76dc425bb4065f907f234f373f674e08 Mon Sep 17 00:00:00 2001
 From: 1bak3r <1bak3r@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 18:35:19 -0500
 Subject: [PATCH] Add agentic browser runtime bridge
 
 ---
  .gitignore                                    |   2 +
- LOCAL_AURACALL_README.md                      | 219 ++++++++++
+ LOCAL_AURACALL_README.md                      | 229 +++++++++++
  README.md                                     |   4 +-
  bin/auracall.ts                               | 301 ++++++++++++--
  config/mcporter.json                          |  17 +-
@@ -66,7 +66,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/mcp.server.test.ts                      |  31 +-
  tests/mcp.windowsPowerShellProbe.test.ts      | 101 +++++
  tests/runtime.configuredExecutor.test.ts      |  48 +++
- 62 files changed, 4358 insertions(+), 168 deletions(-)
+ 62 files changed, 4368 insertions(+), 168 deletions(-)
  create mode 100644 LOCAL_AURACALL_README.md
  create mode 100644 docs/codex-pro-guard-loop.md
  create mode 100644 packages/browser-service/src/chromeIdentity.ts
@@ -93,10 +93,10 @@ index b38ed4d9..176739a7 100644
 +runs/
 diff --git a/LOCAL_AURACALL_README.md b/LOCAL_AURACALL_README.md
 new file mode 100644
-index 00000000..992fad7f
+index 00000000..3bb15e5d
 --- /dev/null
 +++ b/LOCAL_AURACALL_README.md
-@@ -0,0 +1,219 @@
+@@ -0,0 +1,229 @@
 +# Local Aura-Call Handoff
 +
 +This README captures the current Aura-Call state on this machine as of
@@ -223,16 +223,16 @@ index 00000000..992fad7f
 +activeManagedInstance: windows-loopback:56431 (alive)
 +chromeGoogleAccount: Bakermaun@gmail.com
 +expectedChatgptIdentity: Bakermaun@gmail.com
-+selectedUrl: https://chatgpt.com/auth/login
-+selectedTitle: Get started | ChatGPT
++selectedUrl: https://chatgpt.com/api/auth/error
++selectedTitle: Just a moment...
 +blockingState: account-auth
-+browserToolsSnapshotPath: /home/bak3r/codex-research/corpora/repos/auracall/auracall-browser-tools-chatgpt-login-required-2026-06-08T23-28-05-184Z.json
++browserToolsSnapshotPath: /home/bak3r/codex-research/corpora/repos/auracall/auracall-browser-tools-chatgpt-login-required-2026-06-08T23-41-30-582Z.json
 +```
 +
 +The default runtime profile now has an expected ChatGPT identity configured for
 +`Bakermaun@gmail.com`. The managed Windows Chrome profile is live, but the
-+selected ChatGPT tab is currently on the ChatGPT login page and does not expose
-+the signed-in composer. The doctor now fails closed as `login-required`; after
++selected ChatGPT tab is currently on an auth-error gate and does not expose the
++signed-in composer. The doctor now fails closed as `login-required`; after
 +sign-in is completed, identity smoke is the next gate before any real browser
 +prompt proof.
 +
@@ -244,6 +244,16 @@ index 00000000..992fad7f
 +chatgpt`, the tab advanced to `https://chatgpt.com/auth/login` and doctor now
 +classifies it as `login-required`.
 +
++A later credential-free CDP click on `Continue with Google` did not reach a
++Google account chooser. The managed tab moved to
++`https://chatgpt.com/api/auth/error`, title `Just a moment...`, with no visible
++controls. The doctor still classifies this as `login-required` with
++`blockingState.kind=account-auth`; the latest snapshot path is:
++
++```text
++/home/bak3r/codex-research/corpora/repos/auracall/auracall-browser-tools-chatgpt-login-required-2026-06-08T23-41-30-582Z.json
++```
++
 +Doctor readiness now also treats a failed/missing browser-tools probe as
 +`browser-probe-error` before applying the identity fallback. This prevents
 +parallel doctor/setup probe contention from masking a missing browser probe as
@@ -253,7 +263,7 @@ index 00000000..992fad7f
 +browser-tools snapshot even when selector diagnosis is skipped because the page
 +is blocked. The snapshot captures the selected URL, page title, visible-control
 +counts, cookies/storage samples, and blocking state. The latest snapshot has
-+`reason=login-required`, `url=https://chatgpt.com/auth/login`, and
++`reason=login-required`, `url=https://chatgpt.com/api/auth/error`, and
 +`blockingState.kind=account-auth`.
 +
 +The doctor still reports that the source browser cookies are newer than the

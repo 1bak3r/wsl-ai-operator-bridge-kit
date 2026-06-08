@@ -30,7 +30,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-28e8d112 Add agentic browser runtime bridge
+7557d53b Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -63,8 +63,8 @@ readiness: not-ok (login-required; blocked)
 activeManagedInstance: live windows-loopback managed Chrome
 chromeGoogleAccount: Bakermaun@gmail.com
 expectedChatgptIdentity: Bakermaun@gmail.com
-selectedUrl: https://chatgpt.com/auth/login
-selectedTitle: Get started | ChatGPT
+selectedUrl: https://chatgpt.com/api/auth/error
+selectedTitle: Just a moment...
 blockingState: account-auth
 ```
 
@@ -81,6 +81,11 @@ After relaunching through `auracall login --target chatgpt`, the selected tab
 advanced to `https://chatgpt.com/auth/login`; doctor now classifies that as
 `login-required`.
 
+A credential-free CDP click on `Continue with Google` then landed at
+`https://chatgpt.com/api/auth/error`, title `Just a moment...`, with no visible
+controls. Doctor still classifies the page as `login-required` with
+`blockingState.kind=account-auth`.
+
 Doctor readiness now reports failed/missing browser-tools probes as
 `browser-probe-error` before falling back to identity state. That avoids a
 weaker `identity-unverified` diagnosis when concurrent setup/doctor probes
@@ -89,7 +94,7 @@ contend for the managed browser operation lock.
 `auracall doctor --target chatgpt --json --save-snapshot` now writes a
 browser-tools snapshot even when selector diagnosis is skipped. The latest
 local proof wrote a snapshot with `reason=login-required`,
-`url=https://chatgpt.com/auth/login`, `title=Get started | ChatGPT`, and
+`url=https://chatgpt.com/api/auth/error`, `title=Just a moment...`, and
 `blockingState.kind=account-auth`.
 
 Blocking pages such as ChatGPT `/api/auth/error`, Cloudflare, CAPTCHA, Google

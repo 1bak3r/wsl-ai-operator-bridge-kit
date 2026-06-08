@@ -116,7 +116,8 @@ Typical smoke checks:
 
 See [docs/auracall-local-handoff.md](docs/auracall-local-handoff.md) for the
 machine-local state that motivated this kit, including the MCP runtime-control
-proof and the remaining ChatGPT browser identity-verification blocker.
+proof and the remaining ChatGPT browser manual-clear / identity-verification
+blocker.
 
 The most useful current readiness gate is:
 
@@ -125,5 +126,5 @@ auracall setup --target chatgpt --skip-login --skip-verify --wait-for-identity a
 ```
 
 It waits for the live ChatGPT provider session to match the expected Aura-Call
-runtime identity, then fails closed if the managed browser still needs manual
-sign-in or challenge clearance.
+runtime identity, and fails fast if the managed browser is already on a
+manual-clear page such as ChatGPT `Just a moment...`.

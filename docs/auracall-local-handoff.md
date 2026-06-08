@@ -30,26 +30,33 @@ The installed Aura-Call doctor now exposes a first-class readiness verdict. The
 current local ChatGPT browser state is:
 
 ```text
-readiness: not-ok (identity-unverified; blocked)
+readiness: not-ok (manual-clear-required; blocked)
 activeManagedInstance: live windows-loopback managed Chrome
 chromeGoogleAccount: Bakermaun@gmail.com
 expectedChatgptIdentity: Bakermaun@gmail.com
+selectedTitle: Just a moment...
+blockingState: cloudflare
 ```
 
 Aura-Call can discover managed Windows Chrome state from WSL through
 `windows-loopback`, and MCP can inspect the Windows host through the PowerShell
-probe. Browser prompt automation still needs the live ChatGPT provider session
-verified in the managed browser, then a successful real ChatGPT prompt proof.
+probe. Browser prompt automation still needs the visible ChatGPT challenge
+cleared, the live ChatGPT provider session verified in the managed browser, and
+then a successful real ChatGPT prompt proof.
 
 Blocking pages such as ChatGPT `/api/auth/error`, Cloudflare, CAPTCHA, Google
 account auth, or other human-verification pages should appear in
 `auracall doctor --target chatgpt --json` as `login-required` or
-`manual-clear-required`. If the top-level URL is `https://chatgpt.com/` but
-identity-smoke still reports `chatgpt_identity_not_detected`, the current
-readiness state is `identity-unverified`.
+`manual-clear-required`. A provider root tab titled `Just a moment...` is now
+classified as a Cloudflare-style manual-clear page even if the body text omits
+the literal Cloudflare label. If the top-level URL is `https://chatgpt.com/`
+after the challenge is cleared but identity-smoke still reports
+`chatgpt_identity_not_detected`, the readiness state becomes
+`identity-unverified`.
 
 For unattended setup handoffs, use the bounded identity wait so setup fails
-closed instead of verifying against an unconfirmed provider account:
+closed instead of verifying against an unconfirmed provider account. It also
+fails fast when the managed browser is already on a manual-clear page:
 
 ```bash
 auracall setup --target chatgpt --skip-login --skip-verify --wait-for-identity auto --json

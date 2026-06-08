@@ -48,6 +48,13 @@ account auth, or other human-verification pages should appear in
 identity-smoke still reports `chatgpt_identity_not_detected`, the current
 readiness state is `identity-unverified`.
 
+For unattended setup handoffs, use the bounded identity wait so setup fails
+closed instead of verifying against an unconfirmed provider account:
+
+```bash
+auracall setup --target chatgpt --skip-login --skip-verify --wait-for-identity auto --json
+```
+
 ## Useful Retest Commands
 
 ```bash

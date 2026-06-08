@@ -24,6 +24,35 @@ This note records the local Aura-Call state that produced this bridge kit.
 - WSL can call Windows PowerShell through the JSONL bridge and preserve a
   stateful PowerShell working directory across commands.
 
+## Published Artifact
+
+The local Aura-Call implementation was committed on branch
+`codex/agentic-browser-runtime-bridge` as:
+
+```text
+28e8d112 Add agentic browser runtime bridge
+```
+
+Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
+`1bak3r` credentials, so the exact commit is preserved in this repo as:
+
+```text
+patches/auracall-agentic-browser-runtime-bridge.patch
+```
+
+The patch was verified with `git am` against Aura-Call `origin/main`.
+
+Latest validation on the committed branch:
+
+```text
+pnpm vitest run tests/mcp.runtimeControl.test.ts tests/mcp.windowsPowerShellProbe.test.ts tests/browser/browserTools.test.ts tests/browser/profileDoctor.test.ts --maxWorkers 1
+pnpm run typecheck
+pnpm run build
+pnpm run smoke:mcp-runtime-control
+```
+
+All four checks passed.
+
 ## Current Browser Readiness Blocker
 
 The installed Aura-Call doctor now exposes a first-class readiness verdict. The

@@ -1,0 +1,26 @@
+{
+  "mcpServers": {
+    "auracall": {
+      "description": "Installed user-scoped Aura-Call MCP wrapper from ~/.local/bin.",
+      "command": "/bin/sh",
+      "args": [
+        "-lc",
+        "exec \"$HOME/.local/bin/auracall-mcp\""
+      ]
+    },
+    "auracall-local": {
+      "description": "Local Aura-Call MCP built from dist/bin/auracall-mcp.js with the user Node runtime when available.",
+      "command": "/bin/sh",
+      "args": [
+        "-lc",
+        "exec \"$AURACALL_BRIDGE_KIT/scripts/run-local-auracall-mcp.sh\""
+      ],
+      "env": {
+        "AURACALL_BRIDGE_KIT": "${AURACALL_BRIDGE_KIT}",
+        "AURACALL_REPO": "${AURACALL_REPO}"
+      }
+    }
+  },
+  "imports": []
+}
+

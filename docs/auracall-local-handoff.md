@@ -44,7 +44,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-b2e5580c Add agentic browser runtime bridge
+cc9dc9b7 Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -72,23 +72,22 @@ pnpm run smoke:mcp-windows-powershell-probe -- --devtools-port 55855
 
 All listed checks passed.
 
-The live PowerShell probe smoke returned Windows PowerShell
+An earlier live PowerShell probe smoke returned Windows PowerShell
 `5.1.26100.8521` and verified the managed Chrome DevTools endpoint on port
 `55855` as `Chrome/148.0.7778.218`.
 
 ## Current Browser Readiness Blocker
 
 The installed Aura-Call doctor now exposes a first-class readiness verdict. The
-current local ChatGPT browser state is:
+latest local ChatGPT browser state is:
 
 ```text
-readiness: not-ok (login-required; blocked)
-activeManagedInstance: live windows-loopback managed Chrome on port 55855
+readiness: not-ok (no-live-managed-browser; warning)
+activeManagedInstance: none
+staleManagedEntry: windows-loopback port 55855, pid 40780, liveness dead-process
 chromeGoogleAccount: Bakermaun@gmail.com
 expectedChatgptIdentity: Bakermaun@gmail.com
-selectedUrl: https://chatgpt.com/
-selectedTitle: ChatGPT
-blockingState: account-auth
+recommendedAction: auracall doctor --target chatgpt --local-only --prune-browser-state, then relaunch/login
 ```
 
 Aura-Call can discover managed Windows Chrome state from WSL through
@@ -134,6 +133,15 @@ Doctor readiness now reports failed/missing browser-tools probes as
 `browser-probe-error` before falling back to identity state. That avoids a
 weaker `identity-unverified` diagnosis when concurrent setup/doctor probes
 contend for the managed browser operation lock.
+
+When the managed browser has been closed but `browser-state.json` still carries
+the old CDP entry, readiness reports `no-live-managed-browser` with a
+prune-first `recommendedAction`:
+
+```bash
+auracall doctor --target chatgpt --local-only --prune-browser-state
+auracall login --target chatgpt --wait-for-manual-clear auto
+```
 
 `auracall doctor --target chatgpt --json --save-snapshot` now writes a
 browser-tools snapshot even when selector diagnosis is skipped. The latest

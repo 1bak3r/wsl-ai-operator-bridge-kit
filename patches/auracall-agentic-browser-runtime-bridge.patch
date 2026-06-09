@@ -1,11 +1,11 @@
-From b2e5580c62b786707b06656645e4b805f2b586bf Mon Sep 17 00:00:00 2001
+From cc9dc9b77c82cecaf311cd33fc0692343cdd6bd7 Mon Sep 17 00:00:00 2001
 From: 1bak3r <1bak3r@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 18:35:19 -0500
 Subject: [PATCH] Add agentic browser runtime bridge
 
 ---
  .gitignore                                    |   2 +
- LOCAL_AURACALL_README.md                      | 321 +++++++++++
+ LOCAL_AURACALL_README.md                      | 326 +++++++++++
  README.md                                     |   4 +-
  bin/auracall.ts                               | 488 ++++++++++++++--
  config/mcporter.json                          |  17 +-
@@ -39,7 +39,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  src/browser/actions/promptComposer.ts         |   3 +
  src/browser/index.ts                          |  34 +-
  src/browser/login.ts                          |  23 +-
- src/browser/profileDoctor.ts                  | 282 +++++++++-
+ src/browser/profileDoctor.ts                  | 296 +++++++++-
  src/browser/service/browserService.ts         |   9 +-
  src/cli/browserSetup.ts                       |  43 +-
  src/mcp/server.ts                             | 119 +++-
@@ -60,7 +60,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/browser/browserService.test.ts          |   1 +
  tests/browser/browserTools.test.ts            |  46 ++
  tests/browser/geminiLogin.test.ts             |   6 +-
- tests/browser/profileDoctor.test.ts           | 364 ++++++++++++
+ tests/browser/profileDoctor.test.ts           | 400 +++++++++++++
  tests/browser/promptComposer.test.ts          |  57 +-
  tests/cli/browserSetup.test.ts                | 202 +++++++
  tests/mcp.responseCreate.test.ts              | 149 ++++-
@@ -69,7 +69,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/mcp.windowsPowerShellProbe.test.ts      | 101 ++++
  tests/runtime.configuredExecutor.test.ts      |  48 ++
  tests/runtime.serviceHost.test.ts             | 129 +++++
- 65 files changed, 5714 insertions(+), 188 deletions(-)
+ 65 files changed, 5769 insertions(+), 188 deletions(-)
  create mode 100644 LOCAL_AURACALL_README.md
  create mode 100644 docs/codex-pro-guard-loop.md
  create mode 100644 packages/browser-service/src/chromeIdentity.ts
@@ -98,10 +98,10 @@ index b38ed4d9..176739a7 100644
 +runs/
 diff --git a/LOCAL_AURACALL_README.md b/LOCAL_AURACALL_README.md
 new file mode 100644
-index 00000000..0f597bf9
+index 00000000..8d13953b
 --- /dev/null
 +++ b/LOCAL_AURACALL_README.md
-@@ -0,0 +1,321 @@
+@@ -0,0 +1,326 @@
 +# Local Aura-Call Handoff
 +
 +This README captures the current Aura-Call state on this machine as of
@@ -360,8 +360,13 @@ index 00000000..0f597bf9
 +`blockingState.kind=account-auth`.
 +
 +The doctor still reports that the source browser cookies are newer than the
-+managed ChatGPT profile. Complete sign-in or clear the auth challenge in the
-+open managed browser before claiming full browser automation.
++managed ChatGPT profile. The latest installed doctor proof also reports
++`readiness.state=no-live-managed-browser` because the managed Windows Chrome
++registry entry on `windows-loopback:55855` is now stale (`dead-process`). Its
++`recommendedAction` now explicitly says to run
++`auracall doctor --target chatgpt --local-only --prune-browser-state` before
++relaunching or starting the login flow. Complete ChatGPT sign-in in the managed
++browser before claiming full browser automation.
 +
 +Useful readiness commands:
 +
@@ -1252,7 +1257,7 @@ index 87403c2d..5e544f02 100644
  
  Lazy account mirroring runs in the background, but foreground AuraCall work has
 diff --git a/docs/browser-mode.md b/docs/browser-mode.md
-index f8e01874..41152671 100644
+index f8e01874..39a1749a 100644
 --- a/docs/browser-mode.md
 +++ b/docs/browser-mode.md
 @@ -87,11 +87,17 @@ You can pass the same payload inline (`--browser-inline-cookies '<json or base64
@@ -1289,7 +1294,7 @@ index f8e01874..41152671 100644
  - If Chrome is already running with that profile and DevTools remote debugging enabled (see `DevToolsActivePort` in the profile dir), you can reuse it instead of relaunching by pointing Aura-Call at it with `--remote-chrome <host:port>`.
 -- To inspect the managed profile and clean dead browser-state entries without launching Chrome, run `auracall doctor --target grok --local-only --prune-browser-state` (swap `grok` for `chatgpt` as needed). Add `--json` if you want a machine-readable `auracall.browser-doctor` report instead of the human summary.
 -- To bootstrap/login/verify in one command, run `auracall setup --target grok` (swap `grok` for `chatgpt` or `gemini` as needed). The command prints the managed profile path before and after verification so you can confirm exactly which Aura-Call profile was used. Add `--json` for a machine-readable `auracall.browser-setup` report with explicit login/verification step status and embedded before/after doctor reports.
-+- To inspect the managed profile and clean dead browser-state entries without launching Chrome, run `auracall doctor --target grok --local-only --prune-browser-state` (swap `grok` for `chatgpt` as needed). Add `--json` if you want a machine-readable `auracall.browser-doctor` report instead of the human summary. The doctor contract includes a top-level `readiness` verdict (`auracall.browser-readiness`) so agents do not have to infer run safety from nested fields. Common non-ready states include `managed-profile-missing`, `no-live-managed-browser`, `manual-clear-required`, `login-required`, `identity-unconfigured`, `identity-unverified`, `identity-mismatch`, `selector-drift`, and `browser-probe-error`. Add `--save-snapshot` to persist a browser-tools snapshot when the selected page is blocked before selector diagnosis can run; the path appears as `runtime.browserToolsSnapshotPath` in JSON output.
++- To inspect the managed profile and clean dead browser-state entries without launching Chrome, run `auracall doctor --target grok --local-only --prune-browser-state` (swap `grok` for `chatgpt` as needed). Add `--json` if you want a machine-readable `auracall.browser-doctor` report instead of the human summary. The doctor contract includes a top-level `readiness` verdict (`auracall.browser-readiness`) so agents do not have to infer run safety from nested fields. Common non-ready states include `managed-profile-missing`, `no-live-managed-browser`, `manual-clear-required`, `login-required`, `identity-unconfigured`, `identity-unverified`, `identity-mismatch`, `selector-drift`, and `browser-probe-error`. When `no-live-managed-browser` is caused by stale `browser-state.json` entries, `readiness.recommendedAction` tells the operator to prune those entries before relaunching or starting login. Add `--save-snapshot` to persist a browser-tools snapshot when the selected page is blocked before selector diagnosis can run; the path appears as `runtime.browserToolsSnapshotPath` in JSON output.
 +- To bootstrap/login/verify in one command, run `auracall setup --target grok` (swap `grok` for `chatgpt` or `gemini` as needed). The command prints the managed profile path before and after verification so you can confirm exactly which Aura-Call profile was used. Add `--json` for a machine-readable `auracall.browser-setup` report with explicit login/verification step status and embedded before/after doctor reports. For unattended setup handoffs, add `--wait-for-identity auto` so the command fails closed until the live provider app session matches the expected service identity. Add `--wait-for-manual-clear auto` when a human is present to clear Cloudflare/CAPTCHA/account gates in the opened browser; Aura-Call observes readiness and resumes after the page clears, but does not solve anti-bot challenges.
  
  ## Remote Chrome Sessions (headless/server workflows)
@@ -3953,7 +3958,7 @@ index 30b9c05a..0d87af15 100644
    if (!resolvedPid) return;
    await registerInstance({
 diff --git a/src/browser/profileDoctor.ts b/src/browser/profileDoctor.ts
-index 353706c5..8dc279d2 100644
+index 353706c5..c6237f7e 100644
 --- a/src/browser/profileDoctor.ts
 +++ b/src/browser/profileDoctor.ts
 @@ -29,6 +29,7 @@ import {
@@ -4055,7 +4060,7 @@ index 353706c5..8dc279d2 100644
      operation?: BrowserOperationRecord | null;
      selectorDiagnosis?:
        | {
-@@ -209,25 +257,241 @@ export function createAuracallBrowserDoctorContract(
+@@ -209,25 +257,255 @@ export function createAuracallBrowserDoctorContract(
    },
    options: { generatedAt?: string } = {},
  ): AuracallBrowserDoctorContract {
@@ -4169,13 +4174,17 @@ index 353706c5..8dc279d2 100644
 +    input.selectorDiagnosis,
 +  );
 +  if (!activeManagedBrowser && !hasSuccessfulRuntimeEvidence) {
++    const reasons = ['no live managed browser instance'];
++    if (localReport.staleRegistryEntries.length > 0) {
++      reasons.push('stale browser-state entries present');
++    }
 +    return result(
 +      'no-live-managed-browser',
 +      'warning',
 +      false,
 +      `No live managed ${target} browser instance is registered for read-only readiness inspection.`,
-+      `Run "auracall login --target ${target}" or start a browser-backed run, then rerun "auracall doctor --target ${target}".`,
-+      ['no live managed browser instance'],
++      buildNoLiveManagedBrowserRecommendedAction(target, localReport),
++      reasons,
 +    );
 +  }
 +
@@ -4283,6 +4292,16 @@ index 353706c5..8dc279d2 100644
 +  );
 +}
 +
++function buildNoLiveManagedBrowserRecommendedAction(
++  target: BrowserDoctorTarget,
++  localReport: BrowserDoctorReport,
++): string {
++  if (localReport.staleRegistryEntries.length === 0) {
++    return `Run "auracall login --target ${target}" or start a browser-backed run, then rerun "auracall doctor --target ${target}".`;
++  }
++  return `Run "auracall doctor --target ${target} --local-only --prune-browser-state" to remove stale browser-state entries, then run "auracall login --target ${target}" or start a browser-backed run, and rerun "auracall doctor --target ${target}".`;
++}
++
 +function findBrowserToolsBlockingState(
 +  browserTools: BrowserToolsDoctorContract | null | undefined,
 +): BrowserToolsBlockingState | null {
@@ -4298,7 +4317,7 @@ index 353706c5..8dc279d2 100644
  function normalizeIdentityComparable(value: unknown): string | null {
    if (typeof value !== 'string') return null;
    const normalized = value.trim().toLowerCase();
-@@ -415,7 +679,7 @@ export function resolveBrowserFeatureUrlContains(target: BrowserDoctorTarget): s
+@@ -415,7 +693,7 @@ export function resolveBrowserFeatureUrlContains(target: BrowserDoctorTarget): s
  }
  
  export function isLoopbackBrowserHost(host: string | null | undefined): boolean {
@@ -6187,7 +6206,7 @@ index 7075e1ff..a768a64b 100644
  
  describe('Gemini browser login', () => {
 diff --git a/tests/browser/profileDoctor.test.ts b/tests/browser/profileDoctor.test.ts
-index 495f83cd..aa3acba1 100644
+index 495f83cd..78c8a68f 100644
 --- a/tests/browser/profileDoctor.test.ts
 +++ b/tests/browser/profileDoctor.test.ts
 @@ -15,11 +15,14 @@ vi.mock('../../src/browser/client.js', () => ({
@@ -6313,7 +6332,7 @@ index 495f83cd..aa3acba1 100644
          selectorDiagnosis: {
            port: 45000,
            report: {
-@@ -938,6 +1014,294 @@ describe('profileDoctor', () => {
+@@ -938,6 +1014,330 @@ describe('profileDoctor', () => {
      });
    });
  
@@ -6602,6 +6621,42 @@ index 495f83cd..aa3acba1 100644
 +        selectorDiagnosisError: 'No DevTools port found.',
 +        identityReconciliationStatus: 'expected_identity_missing',
 +      },
++    });
++  });
++
++  it('recommends pruning stale browser-state before relaunching a dead managed browser', () => {
++    const staleEntry = {
++      key: 'managed-stale',
++      profilePath: '/tmp/managed/default/chatgpt',
++      profileName: 'Default',
++      pid: 999999,
++      port: 55855,
++      host: 'windows-loopback',
++      alive: false,
++      liveness: 'dead-process' as const,
++      actualPid: null,
++      managed: true,
++      legacy: false,
++      services: ['chatgpt'],
++    };
++    const readiness = assessAuracallBrowserReadiness({
++      target: 'chatgpt',
++      localReport: createLocalReport({
++        managedRegistryEntry: staleEntry,
++        registryEntries: [staleEntry],
++        staleRegistryEntries: [staleEntry],
++        warnings: ['browser-state.json contains 1 stale entry (1 dead-process).'],
++      }),
++    });
++
++    expect(readiness).toMatchObject({
++      ok: false,
++      state: 'no-live-managed-browser',
++      severity: 'warning',
++      requiresHuman: false,
++      recommendedAction:
++        'Run "auracall doctor --target chatgpt --local-only --prune-browser-state" to remove stale browser-state entries, then run "auracall login --target chatgpt" or start a browser-backed run, and rerun "auracall doctor --target chatgpt".',
++      reasons: ['no live managed browser instance', 'stale browser-state entries present'],
 +    });
 +  });
 +

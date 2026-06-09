@@ -146,9 +146,11 @@ manual-clear / identity-verification blocker.
 The most useful current readiness gate is:
 
 ```bash
+auracall doctor --target chatgpt --local-only --prune-browser-state
 auracall setup --target chatgpt --skip-login --skip-verify --wait-for-identity auto --json
 ```
 
-It waits for the live ChatGPT provider session to match the expected Aura-Call
-runtime identity, and fails fast if the managed browser is already on a
-manual-clear page such as ChatGPT `Just a moment...`.
+The first command clears stale local CDP registry entries without launching a
+browser. The setup command waits for the live ChatGPT provider session to match
+the expected Aura-Call runtime identity, and fails fast if the managed browser
+is already on a manual-clear page such as ChatGPT `Just a moment...`.

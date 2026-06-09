@@ -1,4 +1,4 @@
-From 829e52bae12cf324c3fcc5c388af78fd71561424 Mon Sep 17 00:00:00 2001
+From 03184ba5d2fae0405c5760c10e785d05155e4874 Mon Sep 17 00:00:00 2001
 From: 1bak3r <1bak3r@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 18:35:19 -0500
 Subject: [PATCH] Add agentic browser runtime bridge
@@ -31,7 +31,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  scripts/install-user-runtime.ts               |   7 +-
  scripts/run-local-mcp.sh                      |  11 +
  scripts/run-mcporter.sh                       |  20 +
- scripts/smoke-mcp-local-action.ts             | 422 +++++++++++++++
+ scripts/smoke-mcp-local-action.ts             | 427 +++++++++++++++
  scripts/smoke-mcp-runtime-control.ts          | 387 ++++++++++++++
  scripts/smoke-mcp-windows-powershell-probe.ts | 281 ++++++++++
  scripts/windows-powershell-chat.ps1           |  69 +++
@@ -47,7 +47,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  src/mcp/tools/runtimeControl.ts               | 182 +++++++
  src/mcp/tools/windowsPowerShellProbe.ts       | 282 ++++++++++
  src/runtime/configuredExecutor.ts             |  15 +-
- src/runtime/runner.ts                         |  54 +-
+ src/runtime/runner.ts                         |  93 +++-
  tests/browser-service/chromeIdentity.test.ts  |  64 +++
  .../chromeLifecycleOwnership.test.ts          |  78 +++
  .../browser-service/chromeTargetReuse.test.ts |  46 +-
@@ -68,8 +68,8 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/mcp.server.test.ts                      |  31 +-
  tests/mcp.windowsPowerShellProbe.test.ts      | 101 ++++
  tests/runtime.configuredExecutor.test.ts      |  48 ++
- tests/runtime.serviceHost.test.ts             |  60 +++
- 65 files changed, 5497 insertions(+), 181 deletions(-)
+ tests/runtime.serviceHost.test.ts             | 129 +++++
+ 65 files changed, 5603 insertions(+), 188 deletions(-)
  create mode 100644 LOCAL_AURACALL_README.md
  create mode 100644 docs/codex-pro-guard-loop.md
  create mode 100644 packages/browser-service/src/chromeIdentity.ts
@@ -98,7 +98,7 @@ index b38ed4d9..176739a7 100644
 +runs/
 diff --git a/LOCAL_AURACALL_README.md b/LOCAL_AURACALL_README.md
 new file mode 100644
-index 00000000..b8fa958f
+index 00000000..aa30bd97
 --- /dev/null
 +++ b/LOCAL_AURACALL_README.md
 @@ -0,0 +1,309 @@
@@ -232,10 +232,10 @@ index 00000000..b8fa958f
 +## MCP Local-Action Proof
 +
 +The installed local-action proof starts `~/.local/bin/auracall-mcp`, seeds a
-+temporary direct runtime run whose step input already contains one bounded
-+shell `localActionRequests[]` entry, claims the run through `runtime_control`,
-+drains it on the same MCP SDK stdio connection, and verifies that the stored
-+run contains the executed local-action result.
++temporary direct runtime run whose bundle already contains one step-owned
++bounded shell `localActionRequests[]` entry, claims the run through
++`runtime_control`, drains it on the same MCP SDK stdio connection, and verifies
++that the stored run contains the executed local-action result.
 +
 +Observed result:
 +
@@ -2475,10 +2475,10 @@ index 00000000..85606e2f
 +exec npx -y mcporter "$@"
 diff --git a/scripts/smoke-mcp-local-action.ts b/scripts/smoke-mcp-local-action.ts
 new file mode 100644
-index 00000000..1d6926d6
+index 00000000..c12f001b
 --- /dev/null
 +++ b/scripts/smoke-mcp-local-action.ts
-@@ -0,0 +1,422 @@
+@@ -0,0 +1,427 @@
 +#!/usr/bin/env tsx
 +import fs from 'node:fs/promises';
 +import os from 'node:os';
@@ -2495,6 +2495,7 @@ index 00000000..1d6926d6
 +  createExecutionRunStep,
 +} from '../src/runtime/model.js';
 +import type { ExecutionRunRecordBundle } from '../src/runtime/types.js';
++import { createTeamRunLocalActionRequest } from '../src/teams/model.js';
 +import { DEFAULT_TEAM_RUN_EXECUTION_POLICY } from '../src/teams/types.js';
 +
 +interface Options {
@@ -2661,21 +2662,25 @@ index 00000000..1d6926d6
 +              allowedCommands: ['node'],
 +              allowedCwdRoots: [homeDir],
 +            },
-+            localActionRequests: [
-+              {
-+                kind: 'shell',
-+                summary: 'Run one bounded node command from the host runtime.',
-+                command: 'node',
-+                args: ['-e', `process.stdout.write(${JSON.stringify(EXPECTED_STDOUT)})`],
-+                structuredPayload: {
-+                  cwd: homeDir,
-+                  timeoutMs: 10_000,
-+                },
-+              },
-+            ],
 +          },
 +          notes: ['This smoke proves the host-action path without contacting a provider.'],
 +        },
++      }),
++    ],
++    localActionRequests: [
++      createTeamRunLocalActionRequest({
++        id: `${RUN_ID}:action:${stepId}:bundle:1`,
++        teamRunId: RUN_ID,
++        ownerStepId: stepId,
++        kind: 'shell',
++        summary: 'Run one bounded node command from the host runtime.',
++        command: 'node',
++        args: ['-e', `process.stdout.write(${JSON.stringify(EXPECTED_STDOUT)})`],
++        structuredPayload: {
++          cwd: homeDir,
++          timeoutMs: 10_000,
++        },
++        createdAt,
 +      }),
 +    ],
 +    sharedState: createExecutionRunSharedState({
@@ -5141,7 +5146,7 @@ index 54abe369..c9900805 100644
      const runtimeSelection = resolveRuntimeSelection(executionConfig, {
        explicitProfileName: context.step.runtimeProfileId,
 diff --git a/src/runtime/runner.ts b/src/runtime/runner.ts
-index bb95404e..ca382e99 100644
+index bb95404e..d8ee036e 100644
 --- a/src/runtime/runner.ts
 +++ b/src/runtime/runner.ts
 @@ -1113,7 +1113,7 @@ function extractFailureRecoverySharedState(
@@ -5153,7 +5158,65 @@ index bb95404e..ca382e99 100644
    const auracall = bundle.run.initialInputs?.auracall;
    if (!isRecord(auracall)) {
      return false;
-@@ -2245,9 +2245,13 @@ function deriveLocalActionRequestsFromStepOutput(input: {
+@@ -2120,12 +2120,18 @@ async function resolveLocalActionRequests(input: {
+   events: ExecutionRunEvent[];
+   sharedState: Partial<Pick<ExecutionRunSharedState, 'artifacts' | 'structuredOutputs' | 'notes'>>;
+ }> {
+-  const requests = deriveLocalActionRequestsFromStepOutput({
+-    bundle: input.record.bundle,
+-    step: input.step,
+-    completedAt: input.completedAt,
+-    output: input.output,
+-  });
++  const existingStepRequests = input.record.bundle.localActionRequests.filter(
++    (request) => request.ownerStepId === input.step.id && request.status === 'requested',
++  );
++  const requests = [
++    ...existingStepRequests,
++    ...deriveLocalActionRequestsFromStepOutput({
++      bundle: input.record.bundle,
++      step: input.step,
++      completedAt: input.completedAt,
++      output: input.output,
++    }),
++  ];
+   if (requests.length === 0) {
+     return {
+       requests: input.record.bundle.localActionRequests,
+@@ -2232,22 +2238,45 @@ async function resolveLocalActionRequests(input: {
+   }
+ 
+   return {
+-    requests: [...input.record.bundle.localActionRequests, ...resolvedRequests],
++    requests: mergeResolvedLocalActionRequests(input.record.bundle.localActionRequests, resolvedRequests),
+     resolvedRequests,
+     events,
+     sharedState,
+   };
+ }
+ 
++function mergeResolvedLocalActionRequests(
++  existingRequests: TeamRunLocalActionRequest[],
++  resolvedRequests: TeamRunLocalActionRequest[],
++): TeamRunLocalActionRequest[] {
++  const byId = new Map(existingRequests.map((request) => [request.id, request]));
++  const appended: TeamRunLocalActionRequest[] = [];
++  for (const request of resolvedRequests) {
++    if (byId.has(request.id)) {
++      byId.set(request.id, request);
++    } else {
++      appended.push(request);
++    }
++  }
++  return [
++    ...existingRequests.map((request) => byId.get(request.id) ?? request),
++    ...appended,
++  ];
++}
++
+ function deriveLocalActionRequestsFromStepOutput(input: {
+   bundle: ExecutionRunRecordBundle;
+   step: ExecutionRunStep;
    completedAt: string;
    output: ExecutionRunStep['output'];
  }): TeamRunLocalActionRequest[] {
@@ -5170,7 +5233,7 @@ index bb95404e..ca382e99 100644
      return [];
    }
  
-@@ -2260,7 +2264,39 @@ function deriveLocalActionRequestsFromStepOutput(input: {
+@@ -2260,7 +2289,39 @@ function deriveLocalActionRequestsFromStepOutput(input: {
        ? new Set(policy.allowedActionKinds as string[])
        : null;
  
@@ -5211,7 +5274,7 @@ index bb95404e..ca382e99 100644
      if (!isRecord(candidate)) {
        return [];
      }
-@@ -2278,7 +2314,9 @@ function deriveLocalActionRequestsFromStepOutput(input: {
+@@ -2278,7 +2339,9 @@ function deriveLocalActionRequestsFromStepOutput(input: {
      }
  
      const request = createTeamRunLocalActionRequest({
@@ -5222,7 +5285,7 @@ index bb95404e..ca382e99 100644
        teamRunId: input.bundle.run.id,
        ownerStepId: input.step.id,
        kind,
-@@ -2303,7 +2341,7 @@ function deriveLocalActionRequestsFromStepOutput(input: {
+@@ -2303,7 +2366,7 @@ function deriveLocalActionRequestsFromStepOutput(input: {
        createdAt: input.completedAt,
      });
  
@@ -5231,7 +5294,7 @@ index bb95404e..ca382e99 100644
        return [
          {
            ...request,
-@@ -2314,7 +2352,7 @@ function deriveLocalActionRequestsFromStepOutput(input: {
+@@ -2314,7 +2377,7 @@ function deriveLocalActionRequestsFromStepOutput(input: {
        ];
      }
  
@@ -7283,10 +7346,18 @@ index 89a09185..7aa1b10e 100644
      const runBrowserModeImpl = vi.fn(async (_options) => ({
        answerText: 'AURACALL_TEAM_SMOKE_OK',
 diff --git a/tests/runtime.serviceHost.test.ts b/tests/runtime.serviceHost.test.ts
-index dc0b3d39..84735ffd 100644
+index dc0b3d39..d091830e 100644
 --- a/tests/runtime.serviceHost.test.ts
 +++ b/tests/runtime.serviceHost.test.ts
-@@ -1311,6 +1311,66 @@ describe('runtime service host', () => {
+@@ -20,6 +20,7 @@ import {
+   createExecutionServiceHost,
+   type ExecutionServiceHostRunnerLifecycleOptions,
+ } from '../src/runtime/serviceHost.js';
++import { createTeamRunLocalActionRequest } from '../src/teams/model.js';
+ import { DEFAULT_TEAM_RUN_EXECUTION_POLICY } from '../src/teams/types.js';
+ 
+ const CHATGPT_ACCOUNT_AFFINITY_CONFIG = {
+@@ -1311,6 +1312,134 @@ describe('runtime service host', () => {
      });
    });
  
@@ -7347,6 +7418,74 @@ index dc0b3d39..84735ffd 100644
 +    });
 +    expect(result.drained[0]?.record?.bundle.sharedState.notes).toContain(
 +      'local action outcomes for run_host_planned_builtin_action:step:1: executed=1',
++    );
++  });
++
++  it('executes requested bundle-level local actions owned by the completed step', async () => {
++    const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auracall-runtime-service-host-'));
++    cleanup.push(homeDir);
++    setAuracallHomeDirOverrideForTest(homeDir);
++
++    const control = createExecutionRuntimeControl();
++    const runId = 'run_host_bundle_planned_action';
++    const stepId = `${runId}:step:1`;
++    const requestId = `${runId}:action:${stepId}:bundle:1`;
++    const bundle = createDirectBundle(runId, '2026-04-08T15:04:20.000Z');
++    bundle.steps[0] = {
++      ...bundle.steps[0]!,
++      input: {
++        ...bundle.steps[0]?.input,
++        structuredData: {
++          localActionPolicy: {
++            mode: 'allowed',
++            allowedActionKinds: ['shell'],
++            allowedCommands: [process.execPath],
++            allowedCwdRoots: [process.cwd()],
++          },
++        },
++      },
++    };
++    bundle.localActionRequests = [
++      createTeamRunLocalActionRequest({
++        id: requestId,
++        teamRunId: runId,
++        ownerStepId: stepId,
++        kind: 'shell',
++        summary: 'Run one bundle-planned bounded node command',
++        command: process.execPath,
++        args: ['-e', 'process.stdout.write("bundle-planned-host-ok")'],
++        structuredPayload: {
++          cwd: process.cwd(),
++        },
++        createdAt: '2026-04-08T15:04:20.000Z',
++      }),
++    ];
++    await control.createRun(bundle);
++
++    const host = createExecutionServiceHost({
++      control,
++      ownerId: 'host:test',
++      now: () => '2026-04-08T15:04:20.000Z',
++    });
++
++    const result = await host.drainRunsOnce({
++      runId,
++    });
++
++    expect(result.executedRunIds).toEqual([runId]);
++    expect(result.drained[0]?.record?.bundle.localActionRequests).toHaveLength(1);
++    expect(result.drained[0]?.record?.bundle.localActionRequests[0]).toMatchObject({
++      id: requestId,
++      kind: 'shell',
++      status: 'executed',
++      resultSummary: `shell action executed: ${process.execPath}`,
++    });
++    expect(result.drained[0]?.record?.bundle.localActionRequests[0]?.resultPayload).toMatchObject({
++      exitCode: 0,
++      stdout: 'bundle-planned-host-ok',
++    });
++    expect(result.drained[0]?.record?.bundle.sharedState.notes).toContain(
++      'local action outcomes for run_host_bundle_planned_action:step:1: executed=1',
 +    );
 +  });
 +

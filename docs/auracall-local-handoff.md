@@ -22,7 +22,7 @@ This note records the local Aura-Call state that produced this bridge kit.
   - the stored bundle ends `succeeded` with a released
     `runner:mcp-runtime-control:<pid>` lease.
 - Same-session MCP planned local-action execution works:
-  - seed a direct runtime run whose step input includes one bounded shell
+  - seed a direct runtime run whose bundle includes one step-owned bounded shell
     `localActionRequests[]` entry;
   - claim and drain the run through installed `~/.local/bin/auracall-mcp`;
   - the stored local-action result is `executed` with
@@ -39,7 +39,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-829e52ba Add agentic browser runtime bridge
+03184ba5 Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the

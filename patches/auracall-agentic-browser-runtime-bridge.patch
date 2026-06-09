@@ -1,11 +1,11 @@
-From b26bcb39df043f7121ecdd805074344d4ade1088 Mon Sep 17 00:00:00 2001
+From 829e52bae12cf324c3fcc5c388af78fd71561424 Mon Sep 17 00:00:00 2001
 From: 1bak3r <1bak3r@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 18:35:19 -0500
 Subject: [PATCH] Add agentic browser runtime bridge
 
 ---
  .gitignore                                    |   2 +
- LOCAL_AURACALL_README.md                      | 281 ++++++++++
+ LOCAL_AURACALL_README.md                      | 309 +++++++++++
  README.md                                     |   4 +-
  bin/auracall.ts                               | 488 ++++++++++++++++--
  config/mcporter.json                          |  17 +-
@@ -20,7 +20,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  docs/testing/mcp-smoke.md                     |  75 +++
  docs/windows-work.md                          |  15 +
  docs/windows.md                               |  11 +
- package.json                                  |   4 +-
+ package.json                                  |   5 +-
  packages/browser-service/src/browserTools.ts  |  31 +-
  .../browser-service/src/chromeIdentity.ts     |  44 ++
  .../browser-service/src/chromeLifecycle.ts    | 107 +++-
@@ -31,6 +31,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  scripts/install-user-runtime.ts               |   7 +-
  scripts/run-local-mcp.sh                      |  11 +
  scripts/run-mcporter.sh                       |  20 +
+ scripts/smoke-mcp-local-action.ts             | 422 +++++++++++++++
  scripts/smoke-mcp-runtime-control.ts          | 387 ++++++++++++++
  scripts/smoke-mcp-windows-powershell-probe.ts | 281 ++++++++++
  scripts/windows-powershell-chat.ps1           |  69 +++
@@ -46,7 +47,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  src/mcp/tools/runtimeControl.ts               | 182 +++++++
  src/mcp/tools/windowsPowerShellProbe.ts       | 282 ++++++++++
  src/runtime/configuredExecutor.ts             |  15 +-
- src/runtime/runner.ts                         |   2 +-
+ src/runtime/runner.ts                         |  54 +-
  tests/browser-service/chromeIdentity.test.ts  |  64 +++
  .../chromeLifecycleOwnership.test.ts          |  78 +++
  .../browser-service/chromeTargetReuse.test.ts |  46 +-
@@ -67,12 +68,14 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/mcp.server.test.ts                      |  31 +-
  tests/mcp.windowsPowerShellProbe.test.ts      | 101 ++++
  tests/runtime.configuredExecutor.test.ts      |  48 ++
- 63 files changed, 4941 insertions(+), 174 deletions(-)
+ tests/runtime.serviceHost.test.ts             |  60 +++
+ 65 files changed, 5497 insertions(+), 181 deletions(-)
  create mode 100644 LOCAL_AURACALL_README.md
  create mode 100644 docs/codex-pro-guard-loop.md
  create mode 100644 packages/browser-service/src/chromeIdentity.ts
  create mode 100755 scripts/run-local-mcp.sh
  create mode 100755 scripts/run-mcporter.sh
+ create mode 100644 scripts/smoke-mcp-local-action.ts
  create mode 100644 scripts/smoke-mcp-runtime-control.ts
  create mode 100644 scripts/smoke-mcp-windows-powershell-probe.ts
  create mode 100644 scripts/windows-powershell-chat.ps1
@@ -95,10 +98,10 @@ index b38ed4d9..176739a7 100644
 +runs/
 diff --git a/LOCAL_AURACALL_README.md b/LOCAL_AURACALL_README.md
 new file mode 100644
-index 00000000..04dc93e9
+index 00000000..b8fa958f
 --- /dev/null
 +++ b/LOCAL_AURACALL_README.md
-@@ -0,0 +1,281 @@
+@@ -0,0 +1,309 @@
 +# Local Aura-Call Handoff
 +
 +This README captures the current Aura-Call state on this machine as of
@@ -145,6 +148,10 @@ index 00000000..04dc93e9
 +  - `pnpm run smoke:mcp-windows-powershell-probe`
 +  - optional live browser check:
 +    `pnpm run smoke:mcp-windows-powershell-probe -- --devtools-port 55855`
++- The installed MCP runtime can execute one planned bounded host action through
++  the real local-action path:
++  - `scripts/smoke-mcp-local-action.ts`
++  - `pnpm run smoke:mcp-local-action`
 +- WSL can talk to Windows PowerShell through:
 +  - `scripts/wsl-powershell-chat.sh`
 +  - `scripts/windows-powershell-chat.ps1`
@@ -174,6 +181,7 @@ index 00000000..04dc93e9
 +pnpm run build
 +pnpm run install:user-runtime
 +pnpm run smoke:mcp-runtime-control
++pnpm run smoke:mcp-local-action
 +pnpm run smoke:mcp-windows-powershell-probe
 +
 +sh ./scripts/run-mcporter.sh list auracall --config config/mcporter.json | grep runtime_control
@@ -219,6 +227,29 @@ index 00000000..04dc93e9
 +lease owner: runner:mcp-runtime-control:<pid>
 +lease status: released
 +step summary: bounded local runner pass completed
++```
++
++## MCP Local-Action Proof
++
++The installed local-action proof starts `~/.local/bin/auracall-mcp`, seeds a
++temporary direct runtime run whose step input already contains one bounded
++shell `localActionRequests[]` entry, claims the run through `runtime_control`,
++drains it on the same MCP SDK stdio connection, and verifies that the stored
++run contains the executed local-action result.
++
++Observed result:
++
++```text
++local-action MCP smoke: pass
++tool=runtime_control
++listed=ok
++claim=claimed
++drain=executed
++run_status=completed
++localAction=executed
++stdout=AURACALL_LOCAL_ACTION_OK
++leaseOwner=runner:mcp-runtime-control:<pid>
++leaseStatus=released
 +```
 +
 +## MCP Windows PowerShell Proof
@@ -1888,10 +1919,10 @@ index c95ba0e9..ec0a7521 100644
  - mcporter chrome-devtools: requires a valid `CHROME_DEVTOOLS_URL` from a live session; otherwise calls will fail.
  - agent-scripts helpers (`runner`, `scripts/committer`) are bash-based and may fail under PowerShell/CMD; run commands directly if they misbehave.
 diff --git a/package.json b/package.json
-index 1b0e10c1..6ae45c4b 100644
+index 1b0e10c1..8ad48583 100644
 --- a/package.json
 +++ b/package.json
-@@ -28,10 +28,12 @@
+@@ -28,10 +28,13 @@
      "test": "vitest run",
      "test:mcp": "pnpm run build && pnpm run test:mcp:unit && pnpm run test:mcp:mcporter",
      "test:mcp:unit": "vitest run tests/mcp*.test.ts tests/mcp/**/*.test.ts",
@@ -1900,6 +1931,7 @@ index 1b0e10c1..6ae45c4b 100644
      "preflight:lazy-live-follow": "tsx scripts/preflight-lazy-live-follow.ts",
      "smoke:mcp-api-status": "tsx scripts/smoke-api-status-mcp.ts --mode both --port 18081",
      "smoke:mcp-ops-browser": "tsx scripts/smoke-ops-browser-mcp.ts",
++    "smoke:mcp-local-action": "tsx scripts/smoke-mcp-local-action.ts",
 +    "smoke:mcp-runtime-control": "tsx scripts/smoke-mcp-runtime-control.ts",
 +    "smoke:mcp-windows-powershell-probe": "tsx scripts/smoke-mcp-windows-powershell-probe.ts",
      "smoke:scheduler-history": "tsx scripts/smoke-account-mirror-scheduler-history.ts",
@@ -2441,6 +2473,434 @@ index 00000000..85606e2f
 +fi
 +
 +exec npx -y mcporter "$@"
+diff --git a/scripts/smoke-mcp-local-action.ts b/scripts/smoke-mcp-local-action.ts
+new file mode 100644
+index 00000000..1d6926d6
+--- /dev/null
++++ b/scripts/smoke-mcp-local-action.ts
+@@ -0,0 +1,422 @@
++#!/usr/bin/env tsx
++import fs from 'node:fs/promises';
++import os from 'node:os';
++import path from 'node:path';
++import { Client } from '@modelcontextprotocol/sdk/client/index.js';
++import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
++import { setAuracallHomeDirOverrideForTest } from '../src/auracallHome.js';
++import { createExecutionRuntimeControl } from '../src/runtime/control.js';
++import {
++  createExecutionRun,
++  createExecutionRunEvent,
++  createExecutionRunRecordBundle,
++  createExecutionRunSharedState,
++  createExecutionRunStep,
++} from '../src/runtime/model.js';
++import type { ExecutionRunRecordBundle } from '../src/runtime/types.js';
++import { DEFAULT_TEAM_RUN_EXECUTION_POLICY } from '../src/teams/types.js';
++
++interface Options {
++  keepHome: boolean;
++  mcpBin: string;
++}
++
++const RUN_ID = 'run_mcp_local_action_smoke';
++const EXPECTED_STDOUT = 'AURACALL_LOCAL_ACTION_OK';
++
++function expandHome(input: string): string {
++  if (input === '~') return os.homedir();
++  if (input.startsWith('~/')) return path.join(os.homedir(), input.slice(2));
++  return input;
++}
++
++function resolveMcpCommand(input: string): string {
++  const expanded = expandHome(input);
++  if (path.isAbsolute(expanded)) return expanded;
++  return /[\\/]/.test(expanded) ? path.resolve(process.cwd(), expanded) : expanded;
++}
++
++function parseArgs(argv: string[]): Options {
++  const options: Options = {
++    keepHome: false,
++    mcpBin: path.join(os.homedir(), '.local', 'bin', 'auracall-mcp'),
++  };
++  for (let index = 0; index < argv.length; index += 1) {
++    const arg = argv[index];
++    if (arg === '--') continue;
++    if (arg === '--mcp-bin') {
++      const value = argv[index + 1];
++      if (!value) throw new Error('--mcp-bin requires a path.');
++      options.mcpBin = resolveMcpCommand(value);
++      index += 1;
++      continue;
++    }
++    if (arg === '--keep-home') {
++      options.keepHome = true;
++      continue;
++    }
++    if (arg === '--help' || arg === '-h') {
++      printHelp();
++      process.exit(0);
++    }
++    throw new Error(`Unknown option: ${arg}`);
++  }
++  return options;
++}
++
++function printHelp(): void {
++  console.log(`Smoke a planned bounded local action through one MCP stdio process.
++
++Usage:
++  pnpm tsx scripts/smoke-mcp-local-action.ts [options]
++
++Options:
++  --mcp-bin <path>  AuraCall MCP binary. Default: ~/.local/bin/auracall-mcp
++  --keep-home       Keep the temporary AURACALL_HOME_DIR for inspection
++  -h, --help        Show this help
++`);
++}
++
++async function writeFixtureConfig(homeDir: string): Promise<string> {
++  const configPath = path.join(homeDir, 'config.json');
++  await fs.writeFile(
++    configPath,
++    `${JSON.stringify(
++      {
++        version: 2,
++        model: 'gpt-5.2',
++        engine: 'api',
++        auracallProfile: 'default',
++        runtime: {
++          localActions: {
++            shell: {
++              complexityStage: 'bounded-command',
++              allowedCommands: ['node'],
++              allowedCwdRoots: [homeDir],
++              defaultShellActionTimeoutMs: 10_000,
++              maxShellActionTimeoutMs: 30_000,
++              maxCaptureChars: 4_000,
++            },
++          },
++        },
++      },
++      null,
++      2,
++    )}\n`,
++    'utf8',
++  );
++  return configPath;
++}
++
++async function seedPlannedLocalActionRun(homeDir: string): Promise<void> {
++  setAuracallHomeDirOverrideForTest(homeDir);
++  const control = createExecutionRuntimeControl();
++  await control.createRun(createPlannedLocalActionBundle(homeDir, new Date().toISOString()));
++}
++
++function createPlannedLocalActionBundle(homeDir: string, createdAt: string): ExecutionRunRecordBundle {
++  const stepId = `${RUN_ID}:step:1`;
++  const events = [
++    createExecutionRunEvent({
++      id: `${RUN_ID}:event:run-created`,
++      runId: RUN_ID,
++      type: 'run-created',
++      createdAt,
++      note: 'created by MCP local-action smoke',
++    }),
++    createExecutionRunEvent({
++      id: `${RUN_ID}:event:${stepId}:runnable`,
++      runId: RUN_ID,
++      stepId,
++      type: 'step-runnable',
++      createdAt,
++      note: 'planned local-action smoke step is runnable',
++      payload: {
++        order: 1,
++      },
++    }),
++  ];
++
++  return createExecutionRunRecordBundle({
++    run: createExecutionRun({
++      id: RUN_ID,
++      sourceKind: 'direct',
++      sourceId: null,
++      status: 'planned',
++      createdAt,
++      updatedAt: createdAt,
++      trigger: 'mcp',
++      requestedBy: 'smoke-mcp-local-action',
++      entryPrompt: 'Execute one bounded local host action.',
++      initialInputs: {
++        model: 'gpt-5.2',
++        runtimeProfile: 'default',
++        service: 'chatgpt',
++      },
++      sharedStateId: `${RUN_ID}:state`,
++      stepIds: [stepId],
++      policy: DEFAULT_TEAM_RUN_EXECUTION_POLICY,
++    }),
++    steps: [
++      createExecutionRunStep({
++        id: stepId,
++        runId: RUN_ID,
++        agentId: 'api-responses',
++        runtimeProfileId: 'default',
++        browserProfileId: null,
++        service: 'chatgpt',
++        kind: 'prompt',
++        status: 'runnable',
++        order: 1,
++        dependsOnStepIds: [],
++        input: {
++          prompt: 'Execute the planned local-action smoke.',
++          handoffIds: [],
++          artifacts: [],
++          structuredData: {
++            localActionPolicy: {
++              mode: 'allowed',
++              allowedActionKinds: ['shell'],
++              allowedCommands: ['node'],
++              allowedCwdRoots: [homeDir],
++            },
++            localActionRequests: [
++              {
++                kind: 'shell',
++                summary: 'Run one bounded node command from the host runtime.',
++                command: 'node',
++                args: ['-e', `process.stdout.write(${JSON.stringify(EXPECTED_STDOUT)})`],
++                structuredPayload: {
++                  cwd: homeDir,
++                  timeoutMs: 10_000,
++                },
++              },
++            ],
++          },
++          notes: ['This smoke proves the host-action path without contacting a provider.'],
++        },
++      }),
++    ],
++    sharedState: createExecutionRunSharedState({
++      id: `${RUN_ID}:state`,
++      runId: RUN_ID,
++      status: 'active',
++      artifacts: [],
++      structuredOutputs: [],
++      notes: [],
++      history: events,
++      lastUpdatedAt: createdAt,
++    }),
++    events,
++  });
++}
++
++async function callInstalledMcp(input: {
++  mcpBin: string;
++  cwd: string;
++  env: Record<string, string>;
++}): Promise<{
++  claimStatus: string;
++  drainStatus: string;
++  runStatus: string;
++}> {
++  const client = new Client({ name: 'auracall-local-action-mcp-smoke', version: '0.0.0' });
++  let stderr = '';
++  const transport = new StdioClientTransport({
++    command: input.mcpBin,
++    cwd: input.cwd,
++    env: input.env,
++    stderr: 'pipe',
++  });
++  transport.stderr?.on('data', (chunk) => {
++    stderr += String(chunk);
++  });
++
++  try {
++    await client.connect(transport);
++    const { tools } = await client.listTools({}, { timeout: 10_000 });
++    assertToolListed(tools, 'runtime_control');
++    assertToolListed(tools, 'run_status');
++
++    const claim = await client.callTool(
++      {
++        name: 'runtime_control',
++        arguments: {
++          action: 'claim-local-run',
++          runId: RUN_ID,
++          schedulerId: 'smoke:mcp-local-action',
++        },
++      },
++      undefined,
++      { timeout: 10_000 },
++    );
++    const claimStructured = asRecord(claim.structuredContent, 'claim structuredContent');
++    assertEqual(claim.isError, false, 'claim isError');
++    assertEqual(claimStructured.object, 'runtime_control', 'claim object');
++    assertEqual(claimStructured.ok, true, 'claim ok');
++    const claimResult = asRecord(claimStructured.result, 'claim result');
++    assertEqual(claimResult.status, 'claimed', 'claim status');
++
++    const drain = await client.callTool(
++      {
++        name: 'runtime_control',
++        arguments: {
++          action: 'drain-run',
++          runId: RUN_ID,
++        },
++      },
++      undefined,
++      { timeout: 15_000 },
++    );
++    const drainStructured = asRecord(drain.structuredContent, 'drain structuredContent');
++    assertEqual(drain.isError, false, 'drain isError');
++    assertEqual(drainStructured.object, 'runtime_control', 'drain object');
++    assertEqual(drainStructured.ok, true, 'drain ok');
++    const drainResult = asRecord(drainStructured.result, 'drain result');
++    assertEqual(drainResult.status, 'executed', 'drain status');
++
++    const status = await client.callTool(
++      {
++        name: 'run_status',
++        arguments: {
++          id: RUN_ID,
++        },
++      },
++      undefined,
++      { timeout: 10_000 },
++    );
++    const statusStructured = asRecord(status.structuredContent, 'run_status structuredContent');
++    assertEqual(status.isError, false, 'run_status isError');
++    assertEqual(statusStructured.object, 'auracall_run_status', 'run_status object');
++    assertEqual(statusStructured.id, RUN_ID, 'run_status id');
++    assertEqual(statusStructured.status, 'completed', 'run_status status');
++
++    return {
++      claimStatus: String(claimResult.status),
++      drainStatus: String(drainResult.status),
++      runStatus: String(statusStructured.status),
++    };
++  } finally {
++    await client.close().catch(() => {});
++    transport.close?.();
++    if (stderr.trim().length > 0 && process.env.AURACALL_SMOKE_DEBUG_STDERR === '1') {
++      console.error(stderr.trim());
++    }
++  }
++}
++
++async function assertStoredBundle(homeDir: string): Promise<{
++  actionStatus: string;
++  actionStdout: string;
++  leaseOwner: string;
++  leaseStatus: string;
++}> {
++  setAuracallHomeDirOverrideForTest(homeDir);
++  const control = createExecutionRuntimeControl();
++  const record = await control.readRun(RUN_ID);
++  if (!record) throw new Error(`Stored run ${RUN_ID} was not found.`);
++  assertEqual(record.bundle.run.status, 'succeeded', 'stored run status');
++  const step = record.bundle.steps[0];
++  if (!step) throw new Error('Stored run has no first step.');
++  assertEqual(step.status, 'succeeded', 'stored step status');
++  const request = record.bundle.localActionRequests[0];
++  if (!request) throw new Error('Stored run has no local action request.');
++  assertEqual(request.status, 'executed', 'local action status');
++  const resultPayload = asRecord(request.resultPayload, 'local action resultPayload');
++  assertEqual(resultPayload.exitCode, 0, 'local action exitCode');
++  assertEqual(resultPayload.stdout, EXPECTED_STDOUT, 'local action stdout');
++  const lease = record.bundle.leases.at(-1);
++  if (!lease) throw new Error('Stored run has no lease record.');
++  if (!lease.ownerId.startsWith('runner:mcp-runtime-control:')) {
++    throw new Error(`lease owner: expected runner:mcp-runtime-control:<pid>, got ${lease.ownerId}.`);
++  }
++  assertEqual(lease.status, 'released', 'lease status');
++  assertEqual(lease.releaseReason, 'completed', 'lease release reason');
++  return {
++    actionStatus: request.status,
++    actionStdout: String(resultPayload.stdout),
++    leaseOwner: lease.ownerId,
++    leaseStatus: lease.status,
++  };
++}
++
++function assertToolListed(tools: Array<{ name?: string }>, toolName: string): void {
++  if (!tools.some((tool) => tool.name === toolName)) {
++    throw new Error(`Installed MCP server did not expose ${toolName}.`);
++  }
++}
++
++function assertEqual(actual: unknown, expected: unknown, label: string): void {
++  if (actual !== expected) {
++    throw new Error(`${label}: expected ${String(expected)}, got ${String(actual)}.`);
++  }
++}
++
++function asRecord(value: unknown, label: string): Record<string, unknown> {
++  if (!value || typeof value !== 'object' || Array.isArray(value)) {
++    throw new Error(`${label}: expected object, got ${String(value)}.`);
++  }
++  return value as Record<string, unknown>;
++}
++
++function normalizeEnv(env: NodeJS.ProcessEnv): Record<string, string> {
++  return Object.fromEntries(
++    Object.entries(env).filter((entry): entry is [string, string] =>
++      typeof entry[1] === 'string'),
++  );
++}
++
++async function main(): Promise<void> {
++  const options = parseArgs(process.argv.slice(2));
++  const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auracall-mcp-local-action-smoke-'));
++  const priorCwd = process.cwd();
++  try {
++    const configPath = await writeFixtureConfig(homeDir);
++    process.env.AURACALL_HOME_DIR = homeDir;
++    process.env.AURACALL_CONFIG_PATH = configPath;
++    process.chdir(homeDir);
++    await seedPlannedLocalActionRun(homeDir);
++    const protocol = await callInstalledMcp({
++      mcpBin: options.mcpBin,
++      cwd: homeDir,
++      env: {
++        ...normalizeEnv(process.env),
++        // biome-ignore lint/style/useNamingConvention: environment variables stay upper snake case
++        AURACALL_DISABLE_KEYTAR: '1',
++        // biome-ignore lint/style/useNamingConvention: environment variables stay upper snake case
++        AURACALL_HOME_DIR: homeDir,
++        // biome-ignore lint/style/useNamingConvention: environment variables stay upper snake case
++        AURACALL_CONFIG_PATH: configPath,
++        // biome-ignore lint/style/useNamingConvention: environment variables stay upper snake case
++        AURACALL_SYSTEM_CONFIG_PATH: path.join(homeDir, 'missing-system-config.json'),
++      },
++    });
++    const stored = await assertStoredBundle(homeDir);
++    console.log([
++      'local-action MCP smoke: pass',
++      'tool=runtime_control',
++      'listed=ok',
++      `claim=${protocol.claimStatus}`,
++      `drain=${protocol.drainStatus}`,
++      `run_status=${protocol.runStatus}`,
++      `localAction=${stored.actionStatus}`,
++      `stdout=${stored.actionStdout}`,
++      `leaseOwner=${stored.leaseOwner}`,
++      `leaseStatus=${stored.leaseStatus}`,
++      `fixtureHome=${homeDir}`,
++    ].join('\n'));
++  } finally {
++    process.chdir(priorCwd);
++    setAuracallHomeDirOverrideForTest(null);
++    if (!options.keepHome) {
++      await fs.rm(homeDir, { recursive: true, force: true });
++    }
++  }
++}
++
++main().then(() => {
++  process.exit(0);
++}).catch((error: unknown) => {
++  console.error(error instanceof Error ? error.message : String(error));
++  process.exit(1);
++});
 diff --git a/scripts/smoke-mcp-runtime-control.ts b/scripts/smoke-mcp-runtime-control.ts
 new file mode 100644
 index 00000000..4e605ef4
@@ -4681,7 +5141,7 @@ index 54abe369..c9900805 100644
      const runtimeSelection = resolveRuntimeSelection(executionConfig, {
        explicitProfileName: context.step.runtimeProfileId,
 diff --git a/src/runtime/runner.ts b/src/runtime/runner.ts
-index bb95404e..2ea6dbdb 100644
+index bb95404e..ca382e99 100644
 --- a/src/runtime/runner.ts
 +++ b/src/runtime/runner.ts
 @@ -1113,7 +1113,7 @@ function extractFailureRecoverySharedState(
@@ -4693,6 +5153,93 @@ index bb95404e..2ea6dbdb 100644
    const auracall = bundle.run.initialInputs?.auracall;
    if (!isRecord(auracall)) {
      return false;
+@@ -2245,9 +2245,13 @@ function deriveLocalActionRequestsFromStepOutput(input: {
+   completedAt: string;
+   output: ExecutionRunStep['output'];
+ }): TeamRunLocalActionRequest[] {
+-  const structuredData = input.output?.structuredData;
+-  const localActionRequests = structuredData?.localActionRequests;
+-  if (!Array.isArray(localActionRequests) || localActionRequests.length === 0) {
++  const inputRequests = Array.isArray(input.step.input.structuredData.localActionRequests)
++    ? input.step.input.structuredData.localActionRequests
++    : [];
++  const outputRequests = Array.isArray(input.output?.structuredData.localActionRequests)
++    ? input.output.structuredData.localActionRequests
++    : [];
++  if (inputRequests.length === 0 && outputRequests.length === 0) {
+     return [];
+   }
+ 
+@@ -2260,7 +2264,39 @@ function deriveLocalActionRequestsFromStepOutput(input: {
+       ? new Set(policy.allowedActionKinds as string[])
+       : null;
+ 
+-  return localActionRequests.flatMap((candidate, index) => {
++  const existingRequestIds = new Set(input.bundle.localActionRequests.map((request) => request.id));
++  const plannedRequests = normalizeLocalActionRequestCandidates({
++    candidates: inputRequests,
++    bundle: input.bundle,
++    step: input.step,
++    completedAt: input.completedAt,
++    idPrefix: 'planned',
++    policyMode,
++    allowedKinds,
++  });
++  const emittedRequests = normalizeLocalActionRequestCandidates({
++    candidates: outputRequests,
++    bundle: input.bundle,
++    step: input.step,
++    completedAt: input.completedAt,
++    idPrefix: null,
++    policyMode,
++    allowedKinds,
++  });
++
++  return [...plannedRequests, ...emittedRequests].filter((request) => !existingRequestIds.has(request.id));
++}
++
++function normalizeLocalActionRequestCandidates(input: {
++  candidates: unknown[];
++  bundle: ExecutionRunRecordBundle;
++  step: ExecutionRunStep;
++  completedAt: string;
++  idPrefix: string | null;
++  policyMode: string | null;
++  allowedKinds: Set<string> | null;
++}): TeamRunLocalActionRequest[] {
++  return input.candidates.flatMap((candidate, index) => {
+     if (!isRecord(candidate)) {
+       return [];
+     }
+@@ -2278,7 +2314,9 @@ function deriveLocalActionRequestsFromStepOutput(input: {
+     }
+ 
+     const request = createTeamRunLocalActionRequest({
+-      id: `${input.bundle.run.id}:action:${input.step.id}:${index + 1}`,
++      id: input.idPrefix
++        ? `${input.bundle.run.id}:action:${input.step.id}:${input.idPrefix}:${index + 1}`
++        : `${input.bundle.run.id}:action:${input.step.id}:${index + 1}`,
+       teamRunId: input.bundle.run.id,
+       ownerStepId: input.step.id,
+       kind,
+@@ -2303,7 +2341,7 @@ function deriveLocalActionRequestsFromStepOutput(input: {
+       createdAt: input.completedAt,
+     });
+ 
+-    if (policyMode === 'forbidden') {
++    if (input.policyMode === 'forbidden') {
+       return [
+         {
+           ...request,
+@@ -2314,7 +2352,7 @@ function deriveLocalActionRequestsFromStepOutput(input: {
+       ];
+     }
+ 
+-    if (allowedKinds && allowedKinds.size > 0 && !allowedKinds.has(request.kind)) {
++    if (input.allowedKinds && input.allowedKinds.size > 0 && !input.allowedKinds.has(request.kind)) {
+       return [
+         {
+           ...request,
 diff --git a/tests/browser-service/chromeIdentity.test.ts b/tests/browser-service/chromeIdentity.test.ts
 new file mode 100644
 index 00000000..2a40d178
@@ -6735,6 +7282,77 @@ index 89a09185..7aa1b10e 100644
    it('executes a Grok browser-backed step from runtime-profile config and returns response output', async () => {
      const runBrowserModeImpl = vi.fn(async (_options) => ({
        answerText: 'AURACALL_TEAM_SMOKE_OK',
+diff --git a/tests/runtime.serviceHost.test.ts b/tests/runtime.serviceHost.test.ts
+index dc0b3d39..84735ffd 100644
+--- a/tests/runtime.serviceHost.test.ts
++++ b/tests/runtime.serviceHost.test.ts
+@@ -1311,6 +1311,66 @@ describe('runtime service host', () => {
+     });
+   });
+ 
++  it('executes planned step-input local actions through the built-in shell executor', async () => {
++    const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auracall-runtime-service-host-'));
++    cleanup.push(homeDir);
++    setAuracallHomeDirOverrideForTest(homeDir);
++
++    const control = createExecutionRuntimeControl();
++    const bundle = createDirectBundle('run_host_planned_builtin_action', '2026-04-08T15:04:15.000Z');
++    bundle.steps[0] = {
++      ...bundle.steps[0]!,
++      input: {
++        ...bundle.steps[0]?.input,
++        structuredData: {
++          localActionPolicy: {
++            mode: 'allowed',
++            allowedActionKinds: ['shell'],
++            allowedCommands: [process.execPath],
++            allowedCwdRoots: [process.cwd()],
++          },
++          localActionRequests: [
++            {
++              kind: 'shell',
++              summary: 'Run one planned bounded node command',
++              command: process.execPath,
++              args: ['-e', 'process.stdout.write("planned-host-ok")'],
++              structuredPayload: {
++                cwd: process.cwd(),
++              },
++            },
++          ],
++        },
++      },
++    };
++    await control.createRun(bundle);
++
++    const host = createExecutionServiceHost({
++      control,
++      ownerId: 'host:test',
++      now: () => '2026-04-08T15:04:15.000Z',
++    });
++
++    const result = await host.drainRunsOnce({
++      runId: 'run_host_planned_builtin_action',
++    });
++
++    expect(result.executedRunIds).toEqual(['run_host_planned_builtin_action']);
++    expect(result.drained[0]?.record?.bundle.localActionRequests[0]).toMatchObject({
++      id: 'run_host_planned_builtin_action:action:run_host_planned_builtin_action:step:1:planned:1',
++      kind: 'shell',
++      status: 'executed',
++      resultSummary: `shell action executed: ${process.execPath}`,
++    });
++    expect(result.drained[0]?.record?.bundle.localActionRequests[0]?.resultPayload).toMatchObject({
++      exitCode: 0,
++      stdout: 'planned-host-ok',
++    });
++    expect(result.drained[0]?.record?.bundle.sharedState.notes).toContain(
++      'local action outcomes for run_host_planned_builtin_action:step:1: executed=1',
++    );
++  });
++
+   it('preserves a requested local action when step policy requires approval and no callback is injected', async () => {
+     const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auracall-runtime-service-host-'));
+     cleanup.push(homeDir);
 -- 
 2.43.0
 

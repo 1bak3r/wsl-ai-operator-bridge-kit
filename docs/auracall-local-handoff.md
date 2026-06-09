@@ -30,7 +30,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-cae14934 Add agentic browser runtime bridge
+85144488 Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -52,7 +52,7 @@ pnpm run build
 pnpm run smoke:mcp-runtime-control
 ```
 
-All four checks passed.
+All listed checks passed.
 
 ## Current Browser Readiness Blocker
 
@@ -60,13 +60,13 @@ The installed Aura-Call doctor now exposes a first-class readiness verdict. The
 current local ChatGPT browser state is:
 
 ```text
-readiness: not-ok (identity-unverified; blocked)
+readiness: not-ok (login-required; blocked)
 activeManagedInstance: live windows-loopback managed Chrome on port 55855
 chromeGoogleAccount: Bakermaun@gmail.com
 expectedChatgptIdentity: Bakermaun@gmail.com
 selectedUrl: https://chatgpt.com/
 selectedTitle: ChatGPT
-blockingState: none
+blockingState: account-auth
 ```
 
 Aura-Call can discover managed Windows Chrome state from WSL through
@@ -102,6 +102,12 @@ confirmed the page was a logged-out ChatGPT landing page with `Log in`, `Sign
 up for free`, and a guest textbox. Identity smoke still fails with
 `chatgpt_identity_not_detected`.
 
+The logged-out ChatGPT landing page is now classified as `account-auth`. A
+short installed test with `auracall login --target chatgpt
+--wait-for-manual-clear 3` waited for human sign-in and timed out with
+`Provider account chooser or sign-in gate detected` instead of treating the
+guest page as ready.
+
 Doctor readiness now reports failed/missing browser-tools probes as
 `browser-probe-error` before falling back to identity state. That avoids a
 weaker `identity-unverified` diagnosis when concurrent setup/doctor probes
@@ -109,18 +115,18 @@ contend for the managed browser operation lock.
 
 `auracall doctor --target chatgpt --json --save-snapshot` now writes a
 browser-tools snapshot even when selector diagnosis is skipped. The latest
-local proof wrote a snapshot with `reason=browser-tools`,
-`url=https://chatgpt.com/`, `title=ChatGPT`, and no blocking state.
+local proof wrote a snapshot with `reason=login-required`,
+`url=https://chatgpt.com/`, `title=ChatGPT`, and
+`blockingState.kind=account-auth`.
 
 Blocking pages such as ChatGPT `/api/auth/error`, Cloudflare, CAPTCHA, Google
 account auth, or other human-verification pages should appear in
 `auracall doctor --target chatgpt --json` as `login-required` or
 `manual-clear-required`. A provider root tab titled `Just a moment...` is now
 classified as a Cloudflare-style manual-clear page even if the body text omits
-the literal Cloudflare label. If the top-level URL is `https://chatgpt.com/`
-after the challenge is cleared but identity-smoke still reports
-`chatgpt_identity_not_detected`, the readiness state becomes
-`identity-unverified`.
+the literal Cloudflare label. A logged-out ChatGPT root page with `Log in` and
+`Sign up` controls is classified as `login-required` so the human-clear waiter
+can hold until sign-in is completed.
 
 For unattended setup handoffs, use the bounded identity wait so setup fails
 closed instead of verifying against an unconfirmed provider account. Add the

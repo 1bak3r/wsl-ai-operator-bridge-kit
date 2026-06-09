@@ -1,11 +1,11 @@
-From cae14934717bdcc028bf204e0c6e7231caa71fcd Mon Sep 17 00:00:00 2001
+From 8514448807f0ac2e61679826224b3564b58fbdaf Mon Sep 17 00:00:00 2001
 From: 1bak3r <1bak3r@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 18:35:19 -0500
 Subject: [PATCH] Add agentic browser runtime bridge
 
 ---
  .gitignore                                    |   2 +
- LOCAL_AURACALL_README.md                      | 240 +++++++++
+ LOCAL_AURACALL_README.md                      | 247 +++++++++
  README.md                                     |   4 +-
  bin/auracall.ts                               | 488 ++++++++++++++++--
  config/mcporter.json                          |  17 +-
@@ -21,7 +21,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  docs/windows-work.md                          |  15 +
  docs/windows.md                               |  11 +
  package.json                                  |   3 +-
- packages/browser-service/src/browserTools.ts  |  25 +-
+ packages/browser-service/src/browserTools.ts  |  31 +-
  .../browser-service/src/chromeIdentity.ts     |  44 ++
  .../browser-service/src/chromeLifecycle.ts    | 107 +++-
  packages/browser-service/src/login.ts         |   2 +-
@@ -56,7 +56,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/browser/browserLoginCore.test.ts        |  42 ++
  tests/browser/browserModeExports.test.ts      |   9 +
  tests/browser/browserService.test.ts          |   1 +
- tests/browser/browserTools.test.ts            |  36 ++
+ tests/browser/browserTools.test.ts            |  46 ++
  tests/browser/geminiLogin.test.ts             |   6 +-
  tests/browser/profileDoctor.test.ts           | 364 +++++++++++++
  tests/browser/promptComposer.test.ts          |  57 +-
@@ -66,7 +66,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/mcp.server.test.ts                      |  31 +-
  tests/mcp.windowsPowerShellProbe.test.ts      | 101 ++++
  tests/runtime.configuredExecutor.test.ts      |  48 ++
- 62 files changed, 4602 insertions(+), 174 deletions(-)
+ 62 files changed, 4625 insertions(+), 174 deletions(-)
  create mode 100644 LOCAL_AURACALL_README.md
  create mode 100644 docs/codex-pro-guard-loop.md
  create mode 100644 packages/browser-service/src/chromeIdentity.ts
@@ -93,10 +93,10 @@ index b38ed4d9..176739a7 100644
 +runs/
 diff --git a/LOCAL_AURACALL_README.md b/LOCAL_AURACALL_README.md
 new file mode 100644
-index 00000000..eb60060d
+index 00000000..b31255a8
 --- /dev/null
 +++ b/LOCAL_AURACALL_README.md
-@@ -0,0 +1,240 @@
+@@ -0,0 +1,247 @@
 +# Local Aura-Call Handoff
 +
 +This README captures the current Aura-Call state on this machine as of
@@ -219,14 +219,14 @@ index 00000000..eb60060d
 +local state is:
 +
 +```text
-+readiness: not-ok (identity-unverified; blocked)
++readiness: not-ok (login-required; blocked)
 +activeManagedInstance: windows-loopback:55855 (alive)
 +chromeGoogleAccount: Bakermaun@gmail.com
 +expectedChatgptIdentity: Bakermaun@gmail.com
 +selectedUrl: https://chatgpt.com/
 +selectedTitle: ChatGPT
-+blockingState: none
-+browserToolsSnapshotPath: /home/bak3r/codex-research/corpora/repos/auracall/auracall-browser-tools-chatgpt-browser-tools-2026-06-08T23-59-00-195Z.json
++blockingState: account-auth
++browserToolsSnapshotPath: /home/bak3r/codex-research/corpora/repos/auracall/auracall-browser-tools-chatgpt-login-required-2026-06-09T00-05-29-046Z.json
 +```
 +
 +The default runtime profile now has an expected ChatGPT identity configured for
@@ -234,8 +234,9 @@ index 00000000..eb60060d
 +selected ChatGPT tab is currently a logged-out ChatGPT landing page. Agent
 +Browser (`agent-browser --cdp 55855 snapshot -i`) sees `Log in`, `Sign up for
 +free`, and a guest textbox; the provider account identity is still unavailable.
-+The doctor now fails closed as `identity-unverified`; after sign-in is
-+completed, identity smoke is the next gate before any real browser prompt proof.
++The doctor now fails closed as `login-required` with
++`blockingState.kind=account-auth`; after sign-in is completed, identity smoke
++is the next gate before any real browser prompt proof.
 +
 +A low-risk CDP reload/focus attempt against the current tab did not clear the
 +page: before and after were both `https://chatgpt.com/`, title
@@ -262,6 +263,11 @@ index 00000000..eb60060d
 +`auracall profile identity-smoke --target chatgpt --include-negative --json`
 +fails with `chatgpt_identity_not_detected`.
 +
++The logged-out ChatGPT landing page is now classified as an account-auth gate.
++A short live check with `auracall login --target chatgpt --wait-for-manual-clear
++3` waited for human sign-in and timed out with `Provider account chooser or
++sign-in gate detected` instead of treating the guest page as ready.
++
 +Doctor readiness now also treats a failed/missing browser-tools probe as
 +`browser-probe-error` before applying the identity fallback. This prevents
 +parallel doctor/setup probe contention from masking a missing browser probe as
@@ -271,7 +277,8 @@ index 00000000..eb60060d
 +browser-tools snapshot even when selector diagnosis is skipped because the page
 +is blocked. The snapshot captures the selected URL, page title, visible-control
 +counts, cookies/storage samples, and blocking state. The latest snapshot has
-+`reason=browser-tools`, `url=https://chatgpt.com/`, and no blocking state.
++`reason=login-required`, `url=https://chatgpt.com/`, and
++`blockingState.kind=account-auth`.
 +
 +The doctor still reports that the source browser cookies are newer than the
 +managed ChatGPT profile. Complete sign-in or clear the auth challenge in the
@@ -301,9 +308,9 @@ index 00000000..eb60060d
 +`readiness.state` as `manual-clear-required` or `login-required`. A provider
 +root tab titled `Just a moment...` is classified as a Cloudflare-style
 +manual-clear page even when the body text omits the literal Cloudflare label.
-+If the top-level page returns to `https://chatgpt.com/` but identity-smoke still
-+fails with `chatgpt_identity_not_detected`, treat it as the current
-+`identity-unverified` blocker and complete provider sign-in manually.
++A logged-out ChatGPT root page with `Log in` and `Sign up` controls is
++classified as `login-required` so the human-clear waiter can hold until sign-in
++is completed.
 +
 +Useful retry command after clearing the visible browser challenge:
 +
@@ -1862,26 +1869,31 @@ index 1b0e10c1..56eae98a 100644
      "smoke:completion-control": "tsx scripts/smoke-account-mirror-completion-control.ts",
      "smoke:completion-hydration": "tsx scripts/smoke-account-mirror-completion-hydration.ts",
 diff --git a/packages/browser-service/src/browserTools.ts b/packages/browser-service/src/browserTools.ts
-index 225b0249..5d0bcb23 100644
+index 225b0249..87db7945 100644
 --- a/packages/browser-service/src/browserTools.ts
 +++ b/packages/browser-service/src/browserTools.ts
-@@ -422,6 +422,15 @@ export function classifyBrowserToolsBlockingState(input: {
+@@ -422,6 +422,20 @@ export function classifyBrowserToolsBlockingState(input: {
    const title = String(input.title ?? '').trim().toLowerCase();
    const bodyText = String(input.bodyText ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
    const corpus = [url, title, bodyText].filter(Boolean).join(' ');
++  const chatgptHost = url.includes('chatgpt.com') || url.includes('chat.openai.com');
 +  const providerAntiBotHost =
-+    url.includes('chatgpt.com') ||
-+    url.includes('chat.openai.com') ||
++    chatgptHost ||
 +    url.includes('gemini.google.com') ||
 +    url.includes('grok.com') ||
 +    url.includes('x.ai');
 +  const justAMomentTitle = /\bjust a moment\b/.test(title);
 +  const antiBotChallengeText =
 +    /enable javascript and cookies|checking your browser|checking if the site connection is secure|review the security|please stand by|ray id/.test(corpus);
++  const chatgptLoggedOutLanding =
++    chatgptHost &&
++    /^https:\/\/(?:chatgpt\.com|chat\.openai\.com)\/(?:[?#].*)?$/.test(url) &&
++    /\blog in\b/.test(bodyText) &&
++    /\bsign up(?: for free)?\b/.test(bodyText);
    if (
      url.includes('google.com/sorry') ||
      /unusual traffic|not a robot/.test(corpus)
-@@ -434,18 +443,26 @@ export function classifyBrowserToolsBlockingState(input: {
+@@ -434,18 +448,27 @@ export function classifyBrowserToolsBlockingState(input: {
    }
    if (
      url.includes('accounts.google.com') ||
@@ -1892,6 +1904,7 @@ index 225b0249..5d0bcb23 100644
 +    url.includes('chat.openai.com/auth/login') ||
 +    (providerAntiBotHost && /\/(?:auth\/)?login(?:[/?#]|$)/.test(url)) ||
 +    (providerAntiBotHost && url.includes('/signin/')) ||
++    chatgptLoggedOutLanding ||
      /\bchoose an account\b|\buse your google account\b|\bsign in\b.*\bgoogle\b|\bgoogle accounts\b/.test(corpus)
    ) {
      return {
@@ -5041,10 +5054,10 @@ index 7031ed3e..9576af08 100644
    };
  });
 diff --git a/tests/browser/browserTools.test.ts b/tests/browser/browserTools.test.ts
-index e50e9af5..dfe407b9 100644
+index e50e9af5..57eeb9a5 100644
 --- a/tests/browser/browserTools.test.ts
 +++ b/tests/browser/browserTools.test.ts
-@@ -894,6 +894,42 @@ describe('selectBrowserToolsPageIndex', () => {
+@@ -894,6 +894,52 @@ describe('selectBrowserToolsPageIndex', () => {
        summary: 'Cloudflare anti-bot interstitial detected.',
        requiresHuman: true,
      });
@@ -5079,6 +5092,16 @@ index e50e9af5..dfe407b9 100644
 +      url: 'https://chatgpt.com/auth/login',
 +      title: 'Get started | ChatGPT',
 +      bodyText: 'Log in Sign up',
++    })).toEqual({
++      kind: 'account-auth',
++      summary: 'Provider account chooser or sign-in gate detected.',
++      requiresHuman: true,
++    });
++
++    expect(classifyBrowserToolsBlockingState({
++      url: 'https://chatgpt.com/',
++      title: 'ChatGPT',
++      bodyText: 'Chat history New chat Log in Sign up for free What are you working on? Chat with ChatGPT',
 +    })).toEqual({
 +      kind: 'account-auth',
 +      summary: 'Provider account chooser or sign-in gate detected.',

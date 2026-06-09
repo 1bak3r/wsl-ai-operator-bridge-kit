@@ -44,7 +44,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-cc9dc9b7 Add agentic browser runtime bridge
+c6a39cb9 Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -84,10 +84,10 @@ latest local ChatGPT browser state is:
 ```text
 readiness: not-ok (no-live-managed-browser; warning)
 activeManagedInstance: none
-staleManagedEntry: windows-loopback port 55855, pid 40780, liveness dead-process
+staleManagedEntry: none after pruning one windows-loopback port 55855 dead-process entry
 chromeGoogleAccount: Bakermaun@gmail.com
 expectedChatgptIdentity: Bakermaun@gmail.com
-recommendedAction: auracall doctor --target chatgpt --local-only --prune-browser-state, then relaunch/login
+recommendedAction: auracall login --target chatgpt, then rerun doctor
 ```
 
 Aura-Call can discover managed Windows Chrome state from WSL through
@@ -142,6 +142,11 @@ prune-first `recommendedAction`:
 auracall doctor --target chatgpt --local-only --prune-browser-state
 auracall login --target chatgpt --wait-for-manual-clear auto
 ```
+
+The prune command was run locally and removed one stale `dead-process` entry
+for `windows-loopback:55855`. The machine is now ready for the relaunch/login
+step, but ChatGPT provider sign-in still requires a human in the managed
+browser.
 
 `auracall doctor --target chatgpt --json --save-snapshot` now writes a
 browser-tools snapshot even when selector diagnosis is skipped. The latest

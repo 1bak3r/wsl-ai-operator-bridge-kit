@@ -30,7 +30,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-7557d53b Add agentic browser runtime bridge
+cae14934 Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -46,6 +46,7 @@ Latest validation on the committed branch:
 
 ```text
 pnpm vitest run tests/mcp.runtimeControl.test.ts tests/mcp.windowsPowerShellProbe.test.ts tests/browser/browserTools.test.ts tests/browser/profileDoctor.test.ts --maxWorkers 1
+pnpm vitest run tests/cli/browserSetup.test.ts tests/browser/profileDoctor.test.ts tests/browser/browserTools.test.ts --maxWorkers 1
 pnpm run typecheck
 pnpm run build
 pnpm run smoke:mcp-runtime-control
@@ -59,13 +60,13 @@ The installed Aura-Call doctor now exposes a first-class readiness verdict. The
 current local ChatGPT browser state is:
 
 ```text
-readiness: not-ok (login-required; blocked)
-activeManagedInstance: live windows-loopback managed Chrome
+readiness: not-ok (identity-unverified; blocked)
+activeManagedInstance: live windows-loopback managed Chrome on port 55855
 chromeGoogleAccount: Bakermaun@gmail.com
 expectedChatgptIdentity: Bakermaun@gmail.com
-selectedUrl: https://chatgpt.com/api/auth/error
-selectedTitle: Just a moment...
-blockingState: account-auth
+selectedUrl: https://chatgpt.com/
+selectedTitle: ChatGPT
+blockingState: none
 ```
 
 Aura-Call can discover managed Windows Chrome state from WSL through
@@ -86,6 +87,21 @@ A credential-free CDP click on `Continue with Google` then landed at
 controls. Doctor still classifies the page as `login-required` with
 `blockingState.kind=account-auth`.
 
+Aura-Call now supports a human-clear wait path:
+
+```bash
+auracall login --target chatgpt --wait-for-manual-clear auto
+auracall setup --target chatgpt --wait-for-manual-clear auto --wait-for-identity auto --skip-verify
+```
+
+This does not solve Cloudflare, CAPTCHA, or account-auth challenges. It opens
+the managed browser, observes readiness, and resumes once a human clears the
+gate. A short installed test with `--wait-for-manual-clear 8` relaunched
+Windows Chrome, Cloudflare cleared without automation, and Agent Browser
+confirmed the page was a logged-out ChatGPT landing page with `Log in`, `Sign
+up for free`, and a guest textbox. Identity smoke still fails with
+`chatgpt_identity_not_detected`.
+
 Doctor readiness now reports failed/missing browser-tools probes as
 `browser-probe-error` before falling back to identity state. That avoids a
 weaker `identity-unverified` diagnosis when concurrent setup/doctor probes
@@ -93,9 +109,8 @@ contend for the managed browser operation lock.
 
 `auracall doctor --target chatgpt --json --save-snapshot` now writes a
 browser-tools snapshot even when selector diagnosis is skipped. The latest
-local proof wrote a snapshot with `reason=login-required`,
-`url=https://chatgpt.com/api/auth/error`, `title=Just a moment...`, and
-`blockingState.kind=account-auth`.
+local proof wrote a snapshot with `reason=browser-tools`,
+`url=https://chatgpt.com/`, `title=ChatGPT`, and no blocking state.
 
 Blocking pages such as ChatGPT `/api/auth/error`, Cloudflare, CAPTCHA, Google
 account auth, or other human-verification pages should appear in
@@ -108,11 +123,12 @@ after the challenge is cleared but identity-smoke still reports
 `identity-unverified`.
 
 For unattended setup handoffs, use the bounded identity wait so setup fails
-closed instead of verifying against an unconfirmed provider account. It also
-fails fast when the managed browser is already on a manual-clear page:
+closed instead of verifying against an unconfirmed provider account. Add the
+manual-clear wait only when a human is present to clear visible provider gates:
 
 ```bash
 auracall setup --target chatgpt --skip-login --skip-verify --wait-for-identity auto --json
+auracall setup --target chatgpt --wait-for-manual-clear auto --wait-for-identity auto --skip-verify
 ```
 
 ## Useful Retest Commands

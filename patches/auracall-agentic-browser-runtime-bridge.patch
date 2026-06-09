@@ -1,56 +1,56 @@
-From 7557d53b76dc425bb4065f907f234f373f674e08 Mon Sep 17 00:00:00 2001
+From cae14934717bdcc028bf204e0c6e7231caa71fcd Mon Sep 17 00:00:00 2001
 From: 1bak3r <1bak3r@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 18:35:19 -0500
 Subject: [PATCH] Add agentic browser runtime bridge
 
 ---
  .gitignore                                    |   2 +
- LOCAL_AURACALL_README.md                      | 229 +++++++++++
+ LOCAL_AURACALL_README.md                      | 240 +++++++++
  README.md                                     |   4 +-
- bin/auracall.ts                               | 301 ++++++++++++--
+ bin/auracall.ts                               | 488 ++++++++++++++++--
  config/mcporter.json                          |  17 +-
  docs/agent-workflows.md                       |   5 +
  docs/browser-mode.md                          |  19 +-
  docs/chromium-forks.md                        |  12 +-
- docs/codex-pro-guard-loop.md                  |  93 +++++
- docs/dev-fixes-log.md                         |  70 ++++
- docs/dev/dev-journal.md                       | 153 +++++++
+ docs/codex-pro-guard-loop.md                  |  93 ++++
+ docs/dev-fixes-log.md                         |  70 +++
+ docs/dev/dev-journal.md                       | 153 ++++++
  docs/linux.md                                 |   2 +-
- docs/mcp.md                                   |  73 ++++
- docs/testing/mcp-smoke.md                     |  75 ++++
+ docs/mcp.md                                   |  73 +++
+ docs/testing/mcp-smoke.md                     |  75 +++
  docs/windows-work.md                          |  15 +
  docs/windows.md                               |  11 +
  package.json                                  |   3 +-
  packages/browser-service/src/browserTools.ts  |  25 +-
  .../browser-service/src/chromeIdentity.ts     |  44 ++
- .../browser-service/src/chromeLifecycle.ts    | 107 ++++-
+ .../browser-service/src/chromeLifecycle.ts    | 107 +++-
  packages/browser-service/src/login.ts         |   2 +-
  packages/browser-service/src/processCheck.ts  |  10 +-
  .../src/service/profileDiscovery.ts           |  12 +-
- .../src/service/stateRegistry.ts              |  25 ++
+ .../src/service/stateRegistry.ts              |  25 +
  scripts/install-user-runtime.ts               |   7 +-
  scripts/run-local-mcp.sh                      |  11 +
  scripts/run-mcporter.sh                       |  20 +
- scripts/smoke-mcp-runtime-control.ts          | 387 ++++++++++++++++++
- scripts/windows-powershell-chat.ps1           |  69 ++++
+ scripts/smoke-mcp-runtime-control.ts          | 387 ++++++++++++++
+ scripts/windows-powershell-chat.ps1           |  69 +++
  scripts/wsl-powershell-chat.sh                |  19 +
  src/browser/actions/promptComposer.ts         |   3 +
  src/browser/index.ts                          |  34 +-
  src/browser/login.ts                          |  23 +-
- src/browser/profileDoctor.ts                  | 282 ++++++++++++-
+ src/browser/profileDoctor.ts                  | 282 +++++++++-
  src/browser/service/browserService.ts         |   9 +-
- src/cli/browserSetup.ts                       |  22 +-
- src/mcp/server.ts                             | 119 +++++-
- src/mcp/tools/responseCreate.ts               |  95 +++++
- src/mcp/tools/runtimeControl.ts               | 182 ++++++++
- src/mcp/tools/windowsPowerShellProbe.ts       | 282 +++++++++++++
+ src/cli/browserSetup.ts                       |  43 +-
+ src/mcp/server.ts                             | 119 ++++-
+ src/mcp/tools/responseCreate.ts               |  95 ++++
+ src/mcp/tools/runtimeControl.ts               | 182 +++++++
+ src/mcp/tools/windowsPowerShellProbe.ts       | 282 ++++++++++
  src/runtime/configuredExecutor.ts             |  15 +-
  src/runtime/runner.ts                         |   2 +-
  tests/browser-service/chromeIdentity.test.ts  |  64 +++
- .../chromeLifecycleOwnership.test.ts          |  78 ++++
- .../browser-service/chromeTargetReuse.test.ts |  46 ++-
+ .../chromeLifecycleOwnership.test.ts          |  78 +++
+ .../browser-service/chromeTargetReuse.test.ts |  46 +-
  tests/browser-service/processCheck.test.ts    |  38 ++
- .../browser-service/profileDiscovery.test.ts  | 187 ++++++---
+ .../browser-service/profileDiscovery.test.ts  | 187 +++++--
  tests/browser-service/stateRegistry.test.ts   |  58 +++
  .../windowsChromeDiscovery.test.ts            |  20 +
  tests/browser/browserLoginCore.test.ts        |  42 ++
@@ -58,15 +58,15 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/browser/browserService.test.ts          |   1 +
  tests/browser/browserTools.test.ts            |  36 ++
  tests/browser/geminiLogin.test.ts             |   6 +-
- tests/browser/profileDoctor.test.ts           | 363 ++++++++++++++++
- tests/browser/promptComposer.test.ts          |  57 ++-
- tests/cli/browserSetup.test.ts                | 182 ++++++++
- tests/mcp.responseCreate.test.ts              | 149 ++++++-
- tests/mcp.runtimeControl.test.ts              | 130 ++++++
+ tests/browser/profileDoctor.test.ts           | 364 +++++++++++++
+ tests/browser/promptComposer.test.ts          |  57 +-
+ tests/cli/browserSetup.test.ts                | 202 ++++++++
+ tests/mcp.responseCreate.test.ts              | 149 +++++-
+ tests/mcp.runtimeControl.test.ts              | 130 +++++
  tests/mcp.server.test.ts                      |  31 +-
- tests/mcp.windowsPowerShellProbe.test.ts      | 101 +++++
- tests/runtime.configuredExecutor.test.ts      |  48 +++
- 62 files changed, 4368 insertions(+), 168 deletions(-)
+ tests/mcp.windowsPowerShellProbe.test.ts      | 101 ++++
+ tests/runtime.configuredExecutor.test.ts      |  48 ++
+ 62 files changed, 4602 insertions(+), 174 deletions(-)
  create mode 100644 LOCAL_AURACALL_README.md
  create mode 100644 docs/codex-pro-guard-loop.md
  create mode 100644 packages/browser-service/src/chromeIdentity.ts
@@ -93,10 +93,10 @@ index b38ed4d9..176739a7 100644
 +runs/
 diff --git a/LOCAL_AURACALL_README.md b/LOCAL_AURACALL_README.md
 new file mode 100644
-index 00000000..3bb15e5d
+index 00000000..eb60060d
 --- /dev/null
 +++ b/LOCAL_AURACALL_README.md
-@@ -0,0 +1,229 @@
+@@ -0,0 +1,240 @@
 +# Local Aura-Call Handoff
 +
 +This README captures the current Aura-Call state on this machine as of
@@ -219,22 +219,23 @@ index 00000000..3bb15e5d
 +local state is:
 +
 +```text
-+readiness: not-ok (login-required; blocked)
-+activeManagedInstance: windows-loopback:56431 (alive)
++readiness: not-ok (identity-unverified; blocked)
++activeManagedInstance: windows-loopback:55855 (alive)
 +chromeGoogleAccount: Bakermaun@gmail.com
 +expectedChatgptIdentity: Bakermaun@gmail.com
-+selectedUrl: https://chatgpt.com/api/auth/error
-+selectedTitle: Just a moment...
-+blockingState: account-auth
-+browserToolsSnapshotPath: /home/bak3r/codex-research/corpora/repos/auracall/auracall-browser-tools-chatgpt-login-required-2026-06-08T23-41-30-582Z.json
++selectedUrl: https://chatgpt.com/
++selectedTitle: ChatGPT
++blockingState: none
++browserToolsSnapshotPath: /home/bak3r/codex-research/corpora/repos/auracall/auracall-browser-tools-chatgpt-browser-tools-2026-06-08T23-59-00-195Z.json
 +```
 +
 +The default runtime profile now has an expected ChatGPT identity configured for
 +`Bakermaun@gmail.com`. The managed Windows Chrome profile is live, but the
-+selected ChatGPT tab is currently on an auth-error gate and does not expose the
-+signed-in composer. The doctor now fails closed as `login-required`; after
-+sign-in is completed, identity smoke is the next gate before any real browser
-+prompt proof.
++selected ChatGPT tab is currently a logged-out ChatGPT landing page. Agent
++Browser (`agent-browser --cdp 55855 snapshot -i`) sees `Log in`, `Sign up for
++free`, and a guest textbox; the provider account identity is still unavailable.
++The doctor now fails closed as `identity-unverified`; after sign-in is
++completed, identity smoke is the next gate before any real browser prompt proof.
 +
 +A low-risk CDP reload/focus attempt against the current tab did not clear the
 +page: before and after were both `https://chatgpt.com/`, title
@@ -254,6 +255,13 @@ index 00000000..3bb15e5d
 +/home/bak3r/codex-research/corpora/repos/auracall/auracall-browser-tools-chatgpt-login-required-2026-06-08T23-41-30-582Z.json
 +```
 +
++After adding the human-clear waiter, `auracall login --target chatgpt
++--wait-for-manual-clear 8` relaunched Windows Chrome on `windows-loopback:55855`.
++Cloudflare cleared without automation, and the selected tab reached
++`https://chatgpt.com/` with title `ChatGPT`. The page is still logged out, so
++`auracall profile identity-smoke --target chatgpt --include-negative --json`
++fails with `chatgpt_identity_not_detected`.
++
 +Doctor readiness now also treats a failed/missing browser-tools probe as
 +`browser-probe-error` before applying the identity fallback. This prevents
 +parallel doctor/setup probe contention from masking a missing browser probe as
@@ -263,8 +271,7 @@ index 00000000..3bb15e5d
 +browser-tools snapshot even when selector diagnosis is skipped because the page
 +is blocked. The snapshot captures the selected URL, page title, visible-control
 +counts, cookies/storage samples, and blocking state. The latest snapshot has
-+`reason=login-required`, `url=https://chatgpt.com/api/auth/error`, and
-+`blockingState.kind=account-auth`.
++`reason=browser-tools`, `url=https://chatgpt.com/`, and no blocking state.
 +
 +The doctor still reports that the source browser cookies are newer than the
 +managed ChatGPT profile. Complete sign-in or clear the auth challenge in the
@@ -278,12 +285,16 @@ index 00000000..3bb15e5d
 +auracall profile identity-smoke --target chatgpt --include-negative --json
 +auracall setup --target chatgpt --skip-login --skip-verify --json
 +auracall setup --target chatgpt --skip-login --skip-verify --wait-for-identity auto --json
++auracall login --target chatgpt --wait-for-manual-clear auto
++auracall setup --target chatgpt --wait-for-manual-clear auto --wait-for-identity auto --skip-verify
 +```
 +
 +Use `--wait-for-identity auto` for agent-driven setup or unattended retests. It
 +waits up to five minutes for the provider app identity to match the expected
-+runtime profile identity, but now fails fast when browser-tools detects a
-+manual-clear page such as ChatGPT `Just a moment...`.
++runtime profile identity. Use `--wait-for-manual-clear auto` only when a human
++is present to clear Cloudflare, CAPTCHA, or account-auth gates in the opened
++browser; Aura-Call observes the page and resumes when the gate clears, but does
++not solve anti-bot challenges.
 +
 +If a refreshed live browser lands on Cloudflare, CAPTCHA, Google account auth,
 +or another human-verification surface, `doctor --json` now reports that under
@@ -342,18 +353,19 @@ index e58fabd8..69095077 100644
    profile, the MCP response, media, and workbench tools use the same configured
    browser-backed service bundle as the local API server.
 diff --git a/bin/auracall.ts b/bin/auracall.ts
-index bda018b2..003e8617 100755
+index bda018b2..aa78a11b 100755
 --- a/bin/auracall.ts
 +++ b/bin/auracall.ts
-@@ -61,6 +61,7 @@ import { buildBrowserConfig, resolveBrowserModelLabel } from '../src/cli/browser
+@@ -61,6 +61,8 @@ import { buildBrowserConfig, resolveBrowserModelLabel } from '../src/cli/browser
  import {
    defaultSetupVerificationPrompt,
    resolveBrowserSetupTarget,
 +  resolveSetupIdentityWaitMs,
++  resolveSetupManualClearWaitMs,
    resolveSetupVerificationModel,
    createAuracallBrowserSetupContract,
  } from '../src/cli/browserSetup.js';
-@@ -478,6 +479,16 @@ interface BrowserDoctorIdentityReconciliationLike {
+@@ -478,6 +480,16 @@ interface BrowserDoctorIdentityReconciliationLike {
    browserProfileMismatchIsInformational: boolean;
  }
  
@@ -370,15 +382,16 @@ index bda018b2..003e8617 100755
  interface BrowserDoctorFeatureReportLike {
    target: 'chatgpt' | 'gemini' | 'grok';
    supported: boolean;
-@@ -526,6 +537,7 @@ type SetupCommandOptions = Partial<Pick<
+@@ -526,6 +538,8 @@ type SetupCommandOptions = Partial<Pick<
    pruneBrowserState?: boolean;
    skipLogin?: boolean;
    skipVerify?: boolean;
 +  waitForIdentity?: string | number | boolean;
++  waitForManualClear?: string | number | boolean;
    verifyPrompt?: string;
    exportCookies?: boolean;
  };
-@@ -4877,6 +4889,7 @@ program
+@@ -4877,6 +4891,7 @@ program
        createAuracallBrowserDoctorContract,
        reconcileBrowserDoctorIdentities,
        withBrowserProbeOperation,
@@ -386,7 +399,7 @@ index bda018b2..003e8617 100755
      } = await import('../src/browser/profileDoctor.js');
      const localReport = await inspectBrowserDoctorState(userConfig, {
        target,
-@@ -4884,12 +4897,14 @@ program
+@@ -4884,12 +4899,14 @@ program
      });
      let operation: import('../packages/browser-service/src/service/operationDispatcher.js').BrowserOperationRecord | null = null;
      let identityStatus: Awaited<ReturnType<typeof inspectBrowserDoctorIdentity>> | null = null;
@@ -401,7 +414,7 @@ index bda018b2..003e8617 100755
  
      if (!commandOptions.localOnly) {
        try {
-@@ -4900,24 +4915,35 @@ program
+@@ -4900,24 +4917,35 @@ program
                target,
                localReport,
              });
@@ -443,7 +456,7 @@ index bda018b2..003e8617 100755
                try {
                  const client = await BrowserAutomationClient.fromConfig(userConfig, { target });
                  selectorDiagnosis = await client.diagnose({
-@@ -4939,21 +4965,36 @@ program
+@@ -4939,21 +4967,36 @@ program
        }
      }
  
@@ -492,7 +505,7 @@ index bda018b2..003e8617 100755
          selectorDiagnosisError ||
          (selectorDiagnosis && !selectorDiagnosis.report.allPassed) ||
          runtimeBlockingState?.requiresHuman
-@@ -4965,10 +5006,12 @@ program
+@@ -4965,10 +5008,12 @@ program
  
      printLocalBrowserDoctorReport(localReport, {
        identityStatus,
@@ -506,7 +519,7 @@ index bda018b2..003e8617 100755
      });
  
      if (commandOptions.localOnly) {
-@@ -4981,6 +5024,13 @@ program
+@@ -4981,6 +5026,13 @@ program
        }
        return;
      }
@@ -520,7 +533,7 @@ index bda018b2..003e8617 100755
      if (target === 'gemini') {
        console.log('- selectorDiagnosis: (not implemented for gemini yet)');
        return;
-@@ -8267,12 +8317,72 @@ async function resolveBrowserNameHints(options: CliOptions, userConfig: Resolved
+@@ -8267,12 +8319,72 @@ async function resolveBrowserNameHints(options: CliOptions, userConfig: Resolved
    }
  }
  
@@ -593,7 +606,7 @@ index bda018b2..003e8617 100755
      featureStatus?: BrowserDoctorFeatureReportLike | null;
      browserTools?: {
        report?: {
-@@ -8283,9 +8393,26 @@ function printLocalBrowserDoctorReport(
+@@ -8283,9 +8395,26 @@ function printLocalBrowserDoctorReport(
              requiresHuman?: boolean | null;
            } | null;
          } | null;
@@ -620,7 +633,7 @@ index bda018b2..003e8617 100755
    } = {},
  ): void {
    console.log(options.title ?? `Local browser state for ${localReport.target}:`);
-@@ -8343,6 +8470,15 @@ function printLocalBrowserDoctorReport(
+@@ -8343,6 +8472,15 @@ function printLocalBrowserDoctorReport(
        console.log('- identityAuthority: provider app session is authoritative; Chrome/Google profile mismatch is informational');
      }
    }
@@ -636,7 +649,7 @@ index bda018b2..003e8617 100755
    if (options.featureStatus) {
      const { featureStatus } = options;
      if (!featureStatus.supported) {
-@@ -8361,7 +8497,7 @@ function printLocalBrowserDoctorReport(
+@@ -8361,7 +8499,7 @@ function printLocalBrowserDoctorReport(
        console.log('- detectedFeatures: (none detected)');
      }
    }
@@ -645,7 +658,7 @@ index bda018b2..003e8617 100755
    if (blockingState) {
      console.log(
        `- blockingState: ${blockingState.kind ?? 'blocked'} (${blockingState.requiresHuman ? 'manual-clear required' : 'detected'})`,
-@@ -8375,6 +8511,9 @@ function printLocalBrowserDoctorReport(
+@@ -8375,6 +8513,9 @@ function printLocalBrowserDoctorReport(
    } else if (options.browserToolsError) {
      console.log(`- browserTools: (collection failed: ${options.browserToolsError})`);
    }
@@ -655,7 +668,119 @@ index bda018b2..003e8617 100755
    if (localReport.registryEntries.length > 0) {
      const registryTable = localReport.registryEntries.map((entry) => ({
        Profile: entry.profilePath,
-@@ -8723,6 +8862,7 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
+@@ -8482,12 +8623,26 @@ function getRuntimeBlockingState(
+           pageProbe?: {
+             blockingState?: RuntimeBlockingStateLike | null;
+           } | null;
++          census?: {
++            selectedTab?: {
++              blockingState?: RuntimeBlockingStateLike | null;
++            } | null;
++            tabs?: Array<{
++              blockingState?: RuntimeBlockingStateLike | null;
++            }>;
++          } | null;
+         } | null;
+       }
+     | null
+     | undefined,
+ ): RuntimeBlockingStateLike | null {
+-  return browserTools?.report?.pageProbe?.blockingState ?? null;
++  const report = browserTools?.report;
++  return (
++    report?.pageProbe?.blockingState ??
++    report?.census?.selectedTab?.blockingState ??
++    report?.census?.tabs?.find((tab) => tab.blockingState?.requiresHuman)?.blockingState ??
++    null
++  );
+ }
+ 
+ function printBlockingStateGuidance(blockingState: RuntimeBlockingStateLike, options: { prefix?: string } = {}): void {
+@@ -8502,6 +8657,83 @@ function printBlockingStateGuidance(blockingState: RuntimeBlockingStateLike, opt
+   );
+ }
+ 
++type BrowserManualClearWaitResult = {
++  ok: boolean;
++  summary: string;
++  lastBlockingState: RuntimeBlockingStateLike | null;
++};
++
++async function waitForBrowserManualClearance(input: {
++  target: 'chatgpt' | 'gemini' | 'grok';
++  userConfig: ResolvedUserConfig;
++  waitMs: number;
++  pruneBrowserState?: boolean;
++  jsonMode?: boolean;
++  initialBlockingState?: RuntimeBlockingStateLike | null;
++  inspectBrowserDoctorState: typeof import('../src/browser/profileDoctor.js').inspectBrowserDoctorState;
++  collectBrowserFeatureRuntime: typeof import('../src/browser/profileDoctor.js').collectBrowserFeatureRuntime;
++}): Promise<BrowserManualClearWaitResult> {
++  if (input.waitMs <= 0) {
++    return {
++      ok: true,
++      summary: 'Manual-clear wait disabled.',
++      lastBlockingState: input.initialBlockingState ?? null,
++    };
++  }
++
++  const deadline = Date.now() + input.waitMs;
++  let lastBlockingState = input.initialBlockingState ?? null;
++  let lastSummary = lastBlockingState?.summary?.trim() || `Waiting for ${input.target} browser page to clear.`;
++
++  if (!input.jsonMode) {
++    console.log('');
++    console.log(
++      chalk.yellow(
++        `${lastSummary} Waiting up to ${Math.round(input.waitMs / 1000)}s for manual clearance in the managed browser.`,
++      ),
++    );
++    console.log(
++      chalk.dim(
++        'AuraCall will observe readiness and resume after the page clears; it will not solve CAPTCHA or anti-bot challenges.',
++      ),
++    );
++  }
++
++  for (;;) {
++    const waitLocalReport = await input.inspectBrowserDoctorState(input.userConfig, {
++      target: input.target,
++      pruneDeadRegistryEntries: Boolean(input.pruneBrowserState),
++    });
++    if (!waitLocalReport.managedRegistryEntry?.alive) {
++      lastBlockingState = null;
++      lastSummary = `No live managed ${input.target} browser instance is available for manual clearance.`;
++    } else {
++      const waitRuntime = await input.collectBrowserFeatureRuntime(input.target, waitLocalReport);
++      const waitBlockingState = getRuntimeBlockingState(waitRuntime.browserTools);
++      if (!waitBlockingState?.requiresHuman) {
++        return {
++          ok: true,
++          summary: `Managed ${input.target} browser page is no longer on a human-clear blocking surface.`,
++          lastBlockingState,
++        };
++      }
++      lastBlockingState = waitBlockingState;
++      lastSummary = waitBlockingState.summary?.trim() || 'Blocking page still requires manual clearance.';
++    }
++
++    if (Date.now() >= deadline) {
++      return {
++        ok: false,
++        summary: `${lastSummary} Timed out after ${Math.round(input.waitMs / 1000)}s waiting for manual clearance.`,
++        lastBlockingState,
++      };
++    }
++
++    const remainingMs = Math.max(0, deadline - Date.now());
++    await sleep(Math.min(5_000, remainingMs));
++  }
++}
++
+ function formatChromeGoogleAccount(
+   account: BrowserDoctorReportLike['chromeGoogleAccount'],
+ ): string {
+@@ -8723,6 +8955,7 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
      inspectBrowserDoctorIdentity,
      collectBrowserFeatureRuntime,
      createAuracallBrowserDoctorContract,
@@ -663,7 +788,7 @@ index bda018b2..003e8617 100755
    } = await import('../src/browser/profileDoctor.js');
    const managedProfileSeedPolicy = commandOptions.forceReseedManagedProfile ? 'force-reseed' : 'bootstrap-only';
    const initialLaunchUrl = resolveSetupLaunchUrl(target, launchOptions);
-@@ -8735,11 +8875,28 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
+@@ -8735,11 +8968,25 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
      target,
      localReport,
    });
@@ -681,10 +806,7 @@ index bda018b2..003e8617 100755
    });
 +  type BrowserSetupFeatureRuntime = Awaited<ReturnType<typeof collectBrowserFeatureRuntime>>;
 +  const findSetupBlockingState = (runtime: BrowserSetupFeatureRuntime) =>
-+    runtime.browserTools?.report?.pageProbe?.blockingState ??
-+    runtime.browserTools?.report?.census.selectedTab?.blockingState ??
-+    runtime.browserTools?.report?.census.tabs.find((tab) => tab.blockingState?.requiresHuman)?.blockingState ??
-+    null;
++    getRuntimeBlockingState(runtime.browserTools);
 +  const describeSetupBlockingAction = (blockingState: NonNullable<ReturnType<typeof findSetupBlockingState>>) =>
 +    blockingState.kind === 'account-auth'
 +      ? 'Complete provider sign-in in the managed browser, then rerun the lowest-churn AuraCall command.'
@@ -692,11 +814,12 @@ index bda018b2..003e8617 100755
    const loginReport: import('../src/cli/browserSetup.js').BrowserSetupLoginStep = {
      status: commandOptions.skipLogin ? 'skipped' : 'completed',
      exportCookies: Boolean(commandOptions.exportCookies),
-@@ -8759,22 +8916,78 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
+@@ -8759,22 +9006,96 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
    let finalDoctorContract: import('../src/browser/profileDoctor.js').AuracallBrowserDoctorContract | null = null;
    let finalDoctorError: string | null = null;
    let setupFailed = false;
 +  const identityWaitMs = resolveSetupIdentityWaitMs(commandOptions.waitForIdentity);
++  const manualClearWaitMs = resolveSetupManualClearWaitMs(commandOptions.waitForManualClear);
  
    if (!jsonMode) {
      printLocalBrowserDoctorReport(localReport, {
@@ -731,6 +854,23 @@ index bda018b2..003e8617 100755
 +      const waitRuntime = await collectBrowserFeatureRuntime(target, waitLocalReport);
 +      const waitBlockingState = findSetupBlockingState(waitRuntime);
 +      if (waitBlockingState?.requiresHuman) {
++        if (manualClearWaitMs > 0) {
++          const manualClearResult = await waitForBrowserManualClearance({
++            target,
++            userConfig,
++            waitMs: manualClearWaitMs,
++            pruneBrowserState: Boolean(commandOptions.pruneBrowserState),
++            jsonMode,
++            initialBlockingState: waitBlockingState,
++            inspectBrowserDoctorState,
++            collectBrowserFeatureRuntime,
++          });
++          if (!manualClearResult.ok) {
++            return manualClearResult;
++          }
++          lastSummary = manualClearResult.summary;
++          continue;
++        }
 +        return {
 +          ok: false,
 +          summary: `${waitBlockingState.summary} ${describeSetupBlockingAction(waitBlockingState)}`,
@@ -777,16 +917,37 @@ index bda018b2..003e8617 100755
        try {
          const client = await BrowserAutomationClient.fromConfig(userConfig, {
            target: target === 'grok' ? 'grok' : 'chatgpt',
-@@ -8784,6 +8997,8 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
+@@ -8784,8 +9105,28 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
            ...launchOptions,
            exportCookies: Boolean(commandOptions.exportCookies),
            managedProfileSeedPolicy,
 +          operationDispatcher: null,
 +          operationOwnerCommand: 'setup',
          });
-         if (!commandOptions.skipVerify) {
+-        if (!commandOptions.skipVerify) {
++        if (manualClearWaitMs > 0) {
++          const manualClearResult = await waitForBrowserManualClearance({
++            target,
++            userConfig,
++            waitMs: manualClearWaitMs,
++            pruneBrowserState: Boolean(commandOptions.pruneBrowserState),
++            jsonMode,
++            inspectBrowserDoctorState,
++            collectBrowserFeatureRuntime,
++          });
++          if (!manualClearResult.ok) {
++            loginReport.status = 'failed';
++            loginReport.error = manualClearResult.summary;
++            setupFailed = true;
++          } else if (!jsonMode) {
++            console.log(chalk.dim(manualClearResult.summary));
++          }
++        }
++        if (!setupFailed && !commandOptions.skipVerify && manualClearWaitMs <= 0) {
            await waitForSetupLoginConfirmation(target);
-@@ -8793,10 +9008,26 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
+         }
+       } catch (error) {
+@@ -8793,10 +9134,26 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
          loginReport.error = error instanceof Error ? error.message : String(error);
          setupFailed = true;
        }
@@ -814,16 +975,62 @@ index bda018b2..003e8617 100755
      if (commandOptions.skipVerify || setupFailed) {
        if (!commandOptions.skipVerify && setupFailed) {
          verificationReport.status = 'skipped';
-@@ -8809,7 +9040,7 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
+@@ -8804,21 +9161,49 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
+       return;
+     }
+ 
+-    const preVerifyLocalReport = await inspectBrowserDoctorState(userConfig, {
++    let preVerifyLocalReport = await inspectBrowserDoctorState(userConfig, {
+       target,
        pruneDeadRegistryEntries: Boolean(commandOptions.pruneBrowserState),
      });
-     const preVerifyRuntime = await collectBrowserFeatureRuntime(target, preVerifyLocalReport);
+-    const preVerifyRuntime = await collectBrowserFeatureRuntime(target, preVerifyLocalReport);
 -    const preVerifyBlockingState = preVerifyRuntime.browserTools?.report?.pageProbe?.blockingState ?? null;
-+    const preVerifyBlockingState = findSetupBlockingState(preVerifyRuntime);
++    let preVerifyRuntime = await collectBrowserFeatureRuntime(target, preVerifyLocalReport);
++    let preVerifyBlockingState = findSetupBlockingState(preVerifyRuntime);
++    if (preVerifyBlockingState?.requiresHuman && manualClearWaitMs > 0) {
++      const manualClearResult = await waitForBrowserManualClearance({
++        target,
++        userConfig,
++        waitMs: manualClearWaitMs,
++        pruneBrowserState: Boolean(commandOptions.pruneBrowserState),
++        jsonMode,
++        initialBlockingState: preVerifyBlockingState,
++        inspectBrowserDoctorState,
++        collectBrowserFeatureRuntime,
++      });
++      if (!manualClearResult.ok) {
++        verificationReport.status = 'failed';
++        verificationReport.error = manualClearResult.summary;
++        setupFailed = true;
++        if (!jsonMode) {
++          console.log('');
++          console.log(chalk.yellow(manualClearResult.summary));
++        }
++        return;
++      }
++      preVerifyLocalReport = await inspectBrowserDoctorState(userConfig, {
++        target,
++        pruneDeadRegistryEntries: Boolean(commandOptions.pruneBrowserState),
++      });
++      preVerifyRuntime = await collectBrowserFeatureRuntime(target, preVerifyLocalReport);
++      preVerifyBlockingState = findSetupBlockingState(preVerifyRuntime);
++    }
      if (preVerifyBlockingState?.requiresHuman) {
        verificationReport.status = 'failed';
-       verificationReport.error = preVerifyBlockingState.summary;
-@@ -8935,17 +9166,27 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
+-      verificationReport.error = preVerifyBlockingState.summary;
++      verificationReport.error = preVerifyBlockingState.summary ?? 'Blocking page requires manual clearance.';
+       setupFailed = true;
+       if (!jsonMode) {
+         console.log('');
+         console.log(
+           chalk.yellow(
+-            `Blocking page detected before verification: ${preVerifyBlockingState.summary}`,
++            `Blocking page detected before verification: ${verificationReport.error}`,
+           ),
+         );
+         console.log(
+@@ -8935,17 +9320,27 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
        target,
        localReport: finalLocalReport,
      });
@@ -852,7 +1059,7 @@ index bda018b2..003e8617 100755
  
      if (!jsonMode) {
        console.log('');
-@@ -8954,6 +9195,7 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
+@@ -8954,6 +9349,7 @@ async function runBrowserSetupCommand(commandOptions: SetupCommandOptions): Prom
            ? `Managed profile state after setup for ${target}:`
            : `Managed profile state after verification for ${target}:`,
          identityStatus: finalIdentityStatus,
@@ -860,14 +1067,56 @@ index bda018b2..003e8617 100755
          browserTools: finalRuntime.browserTools,
          browserToolsError: finalRuntime.browserToolsError,
        });
-@@ -9275,6 +9517,7 @@ program
+@@ -9275,6 +9671,8 @@ program
    .option('--prune-browser-state', 'Remove dead entries from ~/.auracall/browser-state.json before reporting.')
    .option('--skip-login', 'Skip opening the login browser and only run the verification step.')
    .option('--skip-verify', 'Stop after local inspection/login; do not send a live verification prompt.')
++  .option('--wait-for-manual-clear <seconds|auto>', 'After opening login, wait for a human to clear Cloudflare/CAPTCHA/account gates.')
 +  .option('--wait-for-identity <seconds|auto>', 'After opening login, poll until the provider identity matches before verification.')
    .option('--verify-prompt <text>', 'Prompt to use for the verification browser run.')
    .option('--json', 'Emit machine-readable JSON output.', false)
    .option('--export-cookies', 'Export Gemini cookies to ~/.auracall/cookies.json while you sign in.')
+@@ -9312,6 +9710,7 @@ program
+   .option('--gemini-url <url>', 'Override the Gemini web URL for login.')
+   .option('--grok-url <url>', 'Override the Grok URL for login.')
+   .option('--export-cookies', 'Export Gemini cookies to ~/.auracall/cookies.json while you sign in.')
++  .option('--wait-for-manual-clear <seconds|auto>', 'Wait for a human to clear Cloudflare/CAPTCHA/account gates after opening login.')
+   .option('--force-reseed-managed-profile', 'Rebuild the managed Aura-Call browser profile from the source Chrome profile before opening login.')
+   .addOption(new Option('--browser-chrome-path <path>', 'Chrome/Chromium executable path.'))
+   .addOption(new Option('--browser-chrome-profile <name>', 'Chrome profile name to launch.'))
+@@ -9342,6 +9741,7 @@ program
+       fallbackTarget: userConfig.browser?.target ?? 'chatgpt',
+     });
+     const launchOptions = resolveBrowserLoginLaunchOptions(commandOptions, userConfig, target);
++    const manualClearWaitMs = resolveSetupManualClearWaitMs(commandOptions.waitForManualClear);
+ 
+     const client = await BrowserAutomationClient.fromConfig(userConfig, {
+       target: target === 'grok' ? 'grok' : 'chatgpt',
+@@ -9357,6 +9757,24 @@ program
+     const runtime = await collectBrowserFeatureRuntime(target, localReport);
+     const runtimeBlockingState = getRuntimeBlockingState(runtime.browserTools);
+     if (runtimeBlockingState?.requiresHuman) {
++      if (manualClearWaitMs > 0) {
++        const manualClearResult = await waitForBrowserManualClearance({
++          target,
++          userConfig,
++          waitMs: manualClearWaitMs,
++          initialBlockingState: runtimeBlockingState,
++          inspectBrowserDoctorState,
++          collectBrowserFeatureRuntime,
++        });
++        if (manualClearResult.ok) {
++          console.log(chalk.dim(manualClearResult.summary));
++          return;
++        }
++        console.log('');
++        console.log(chalk.yellow(manualClearResult.summary));
++        process.exitCode = 1;
++        return;
++      }
+       printBlockingStateGuidance(runtimeBlockingState, {
+         prefix: `Managed ${target} browser profile landed on a blocking page after login`,
+       });
 diff --git a/config/mcporter.json b/config/mcporter.json
 index c59a51b1..4bf48fab 100644
 --- a/config/mcporter.json
@@ -917,7 +1166,7 @@ index 87403c2d..5e544f02 100644
  
  Lazy account mirroring runs in the background, but foreground AuraCall work has
 diff --git a/docs/browser-mode.md b/docs/browser-mode.md
-index f8e01874..b88540c0 100644
+index f8e01874..41152671 100644
 --- a/docs/browser-mode.md
 +++ b/docs/browser-mode.md
 @@ -87,11 +87,17 @@ You can pass the same payload inline (`--browser-inline-cookies '<json or base64
@@ -955,7 +1204,7 @@ index f8e01874..b88540c0 100644
 -- To inspect the managed profile and clean dead browser-state entries without launching Chrome, run `auracall doctor --target grok --local-only --prune-browser-state` (swap `grok` for `chatgpt` as needed). Add `--json` if you want a machine-readable `auracall.browser-doctor` report instead of the human summary.
 -- To bootstrap/login/verify in one command, run `auracall setup --target grok` (swap `grok` for `chatgpt` or `gemini` as needed). The command prints the managed profile path before and after verification so you can confirm exactly which Aura-Call profile was used. Add `--json` for a machine-readable `auracall.browser-setup` report with explicit login/verification step status and embedded before/after doctor reports.
 +- To inspect the managed profile and clean dead browser-state entries without launching Chrome, run `auracall doctor --target grok --local-only --prune-browser-state` (swap `grok` for `chatgpt` as needed). Add `--json` if you want a machine-readable `auracall.browser-doctor` report instead of the human summary. The doctor contract includes a top-level `readiness` verdict (`auracall.browser-readiness`) so agents do not have to infer run safety from nested fields. Common non-ready states include `managed-profile-missing`, `no-live-managed-browser`, `manual-clear-required`, `login-required`, `identity-unconfigured`, `identity-unverified`, `identity-mismatch`, `selector-drift`, and `browser-probe-error`. Add `--save-snapshot` to persist a browser-tools snapshot when the selected page is blocked before selector diagnosis can run; the path appears as `runtime.browserToolsSnapshotPath` in JSON output.
-+- To bootstrap/login/verify in one command, run `auracall setup --target grok` (swap `grok` for `chatgpt` or `gemini` as needed). The command prints the managed profile path before and after verification so you can confirm exactly which Aura-Call profile was used. Add `--json` for a machine-readable `auracall.browser-setup` report with explicit login/verification step status and embedded before/after doctor reports. For unattended setup handoffs, add `--wait-for-identity auto` so the command fails closed until the live provider app session matches the expected service identity; it also stops early on detected manual-clear pages.
++- To bootstrap/login/verify in one command, run `auracall setup --target grok` (swap `grok` for `chatgpt` or `gemini` as needed). The command prints the managed profile path before and after verification so you can confirm exactly which Aura-Call profile was used. Add `--json` for a machine-readable `auracall.browser-setup` report with explicit login/verification step status and embedded before/after doctor reports. For unattended setup handoffs, add `--wait-for-identity auto` so the command fails closed until the live provider app session matches the expected service identity. Add `--wait-for-manual-clear auto` when a human is present to clear Cloudflare/CAPTCHA/account gates in the opened browser; Aura-Call observes readiness and resumes after the page clears, but does not solve anti-bot challenges.
  
  ## Remote Chrome Sessions (headless/server workflows)
  
@@ -2791,7 +3040,7 @@ index 30b9c05a..0d87af15 100644
    if (!resolvedPid) return;
    await registerInstance({
 diff --git a/src/browser/profileDoctor.ts b/src/browser/profileDoctor.ts
-index 353706c5..04f2d154 100644
+index 353706c5..8dc279d2 100644
 --- a/src/browser/profileDoctor.ts
 +++ b/src/browser/profileDoctor.ts
 @@ -29,6 +29,7 @@ import {
@@ -3021,8 +3270,8 @@ index 353706c5..04f2d154 100644
 +    const state = blockingState.kind === 'account-auth' ? 'login-required' : 'manual-clear-required';
 +    const action =
 +      blockingState.kind === 'account-auth'
-+        ? `Complete provider sign-in in the managed browser or run "auracall login --target ${target}", then rerun the lowest-churn AuraCall command.`
-+        : 'Clear the challenge manually in the managed browser, then rerun the lowest-churn AuraCall command.';
++        ? `Complete provider sign-in in the managed browser or run "auracall login --target ${target} --wait-for-manual-clear auto" when a human can clear provider gates, then rerun the lowest-churn AuraCall command.`
++        : `Clear the challenge manually in the managed browser, or run "auracall login --target ${target} --wait-for-manual-clear auto" while a human clears it, then rerun the lowest-churn AuraCall command.`;
 +    return result(
 +      state,
 +      'blocked',
@@ -3060,7 +3309,7 @@ index 353706c5..04f2d154 100644
 +        input.identityReconciliation.summary,
 +        state === 'identity-unconfigured'
 +          ? `Configure services.${target}.identity or the selected runtime profile identity, then rerun "auracall doctor --target ${target}".`
-+          : `Use "auracall login --target ${target}" with the expected account, then rerun "auracall profile identity-smoke --target ${target} --include-negative --json".`,
++          : `Use "auracall login --target ${target} --wait-for-manual-clear auto" with the expected account when a human can clear provider gates, then rerun "auracall profile identity-smoke --target ${target} --include-negative --json".`,
 +        [input.identityReconciliation.status],
 +      );
 +    }
@@ -3173,30 +3422,51 @@ index f727c946..9dedea31 100644
          await registerInstance(
            { registryPath: this.registryPath },
 diff --git a/src/cli/browserSetup.ts b/src/cli/browserSetup.ts
-index 901441b5..f7c36f98 100644
+index 901441b5..76af817e 100644
 --- a/src/cli/browserSetup.ts
 +++ b/src/cli/browserSetup.ts
-@@ -3,6 +3,7 @@ import type { AuracallBrowserDoctorContract } from '../browser/profileDoctor.js'
+@@ -3,6 +3,8 @@ import type { AuracallBrowserDoctorContract } from '../browser/profileDoctor.js'
  
  export type BrowserSetupTarget = 'chatgpt' | 'gemini' | 'grok';
  export const AURACALL_BROWSER_SETUP_CONTRACT_VERSION = 1 as const;
 +export const DEFAULT_SETUP_IDENTITY_WAIT_MS = 300_000;
++export const DEFAULT_SETUP_MANUAL_CLEAR_WAIT_MS = 300_000;
  
  export type BrowserSetupStepStatus = 'completed' | 'skipped' | 'failed';
  
-@@ -91,6 +92,19 @@ export function defaultSetupVerificationPrompt(_target: BrowserSetupTarget): str
+@@ -91,6 +93,39 @@ export function defaultSetupVerificationPrompt(_target: BrowserSetupTarget): str
    return 'ping';
  }
  
 +export function resolveSetupIdentityWaitMs(value: unknown): number {
++  return resolveSetupWaitMs(value, {
++    defaultAutoMs: DEFAULT_SETUP_IDENTITY_WAIT_MS,
++    label: '--wait-for-identity',
++  });
++}
++
++export function resolveSetupManualClearWaitMs(value: unknown): number {
++  return resolveSetupWaitMs(value, {
++    defaultAutoMs: DEFAULT_SETUP_MANUAL_CLEAR_WAIT_MS,
++    label: '--wait-for-manual-clear',
++  });
++}
++
++function resolveSetupWaitMs(
++  value: unknown,
++  options: {
++    defaultAutoMs: number;
++    label: string;
++  },
++): number {
 +  if (value == null || value === false) return 0;
-+  if (value === true) return DEFAULT_SETUP_IDENTITY_WAIT_MS;
++  if (value === true) return options.defaultAutoMs;
 +  const raw = String(value).trim().toLowerCase();
 +  if (!raw || raw === '0' || raw === 'false' || raw === 'off' || raw === 'none') return 0;
-+  if (raw === 'auto') return DEFAULT_SETUP_IDENTITY_WAIT_MS;
++  if (raw === 'auto') return options.defaultAutoMs;
 +  const parsed = Number.parseFloat(raw);
 +  if (!Number.isFinite(parsed) || parsed < 0) {
-+    throw new Error('Invalid --wait-for-identity value. Use seconds, 0, or auto.');
++    throw new Error(`Invalid ${options.label} value. Use seconds, 0, or auto.`);
 +  }
 +  return Math.trunc(parsed * 1000);
 +}
@@ -3204,7 +3474,7 @@ index 901441b5..f7c36f98 100644
  export function createAuracallBrowserSetupContract(
    input: {
      target: BrowserSetupTarget;
-@@ -103,10 +117,16 @@ export function createAuracallBrowserSetupContract(
+@@ -103,10 +138,16 @@ export function createAuracallBrowserSetupContract(
    options: { generatedAt?: string } = {},
  ): AuracallBrowserSetupContract {
    const finalDoctorError = input.finalDoctorError ?? null;
@@ -4849,7 +5119,7 @@ index 7075e1ff..a768a64b 100644
  
  describe('Gemini browser login', () => {
 diff --git a/tests/browser/profileDoctor.test.ts b/tests/browser/profileDoctor.test.ts
-index 495f83cd..14063421 100644
+index 495f83cd..aa3acba1 100644
 --- a/tests/browser/profileDoctor.test.ts
 +++ b/tests/browser/profileDoctor.test.ts
 @@ -15,11 +15,14 @@ vi.mock('../../src/browser/client.js', () => ({
@@ -4975,7 +5245,7 @@ index 495f83cd..14063421 100644
          selectorDiagnosis: {
            port: 45000,
            report: {
-@@ -938,6 +1014,293 @@ describe('profileDoctor', () => {
+@@ -938,6 +1014,294 @@ describe('profileDoctor', () => {
      });
    });
  
@@ -5032,7 +5302,8 @@ index 495f83cd..14063421 100644
 +      state: 'manual-clear-required',
 +      severity: 'blocked',
 +      requiresHuman: true,
-+      recommendedAction: 'Clear the challenge manually in the managed browser, then rerun the lowest-churn AuraCall command.',
++      recommendedAction:
++        'Clear the challenge manually in the managed browser, or run "auracall login --target chatgpt --wait-for-manual-clear auto" while a human clears it, then rerun the lowest-churn AuraCall command.',
 +      evidence: {
 +        blockingState: {
 +          kind: 'cloudflare',
@@ -5169,7 +5440,7 @@ index 495f83cd..14063421 100644
 +      severity: 'blocked',
 +      requiresHuman: true,
 +      recommendedAction:
-+        'Use "auracall login --target chatgpt" with the expected account, then rerun "auracall profile identity-smoke --target chatgpt --include-negative --json".',
++        'Use "auracall login --target chatgpt --wait-for-manual-clear auto" with the expected account when a human can clear provider gates, then rerun "auracall profile identity-smoke --target chatgpt --include-negative --json".',
 +      evidence: {
 +        identityReconciliationStatus: 'provider_app_session_drift',
 +      },
@@ -5341,14 +5612,15 @@ index a807003a..88cedc0f 100644
 +  });
  });
 diff --git a/tests/cli/browserSetup.test.ts b/tests/cli/browserSetup.test.ts
-index badca23b..ca3a6211 100644
+index badca23b..0b0cdaf1 100644
 --- a/tests/cli/browserSetup.test.ts
 +++ b/tests/cli/browserSetup.test.ts
-@@ -3,9 +3,143 @@ import {
+@@ -3,9 +3,144 @@ import {
    createAuracallBrowserSetupContract,
    defaultSetupVerificationPrompt,
    resolveBrowserSetupTarget,
 +  resolveSetupIdentityWaitMs,
++  resolveSetupManualClearWaitMs,
    resolveSetupVerificationModel,
  } from '../../src/cli/browserSetup.js';
  
@@ -5488,7 +5760,7 @@ index badca23b..ca3a6211 100644
  describe('resolveBrowserSetupTarget', () => {
    test('uses explicit target when present', () => {
      expect(resolveBrowserSetupTarget({ explicitTarget: 'grok', fallbackTarget: 'chatgpt' })).toBe('grok');
-@@ -90,6 +224,25 @@ describe('defaultSetupVerificationPrompt', () => {
+@@ -90,6 +225,44 @@ describe('defaultSetupVerificationPrompt', () => {
    });
  });
  
@@ -5511,10 +5783,29 @@ index badca23b..ca3a6211 100644
 +  });
 +});
 +
++describe('resolveSetupManualClearWaitMs', () => {
++  test('defaults to disabled unless requested', () => {
++    expect(resolveSetupManualClearWaitMs(undefined)).toBe(0);
++    expect(resolveSetupManualClearWaitMs('0')).toBe(0);
++    expect(resolveSetupManualClearWaitMs('off')).toBe(0);
++  });
++
++  test('accepts auto and numeric seconds', () => {
++    expect(resolveSetupManualClearWaitMs('auto')).toBe(300_000);
++    expect(resolveSetupManualClearWaitMs(true)).toBe(300_000);
++    expect(resolveSetupManualClearWaitMs('1.25')).toBe(1250);
++  });
++
++  test('rejects invalid values with the manual-clear flag name', () => {
++    expect(() => resolveSetupManualClearWaitMs('soon')).toThrow(/Invalid --wait-for-manual-clear/i);
++    expect(() => resolveSetupManualClearWaitMs('-1')).toThrow(/Invalid --wait-for-manual-clear/i);
++  });
++});
++
  describe('createAuracallBrowserSetupContract', () => {
    test('wraps setup output in a versioned contract', () => {
      const contract = createAuracallBrowserSetupContract(
-@@ -100,6 +253,7 @@ describe('createAuracallBrowserSetupContract', () => {
+@@ -100,6 +273,7 @@ describe('createAuracallBrowserSetupContract', () => {
            version: 1,
            generatedAt: '2026-03-25T23:00:00.000Z',
            target: 'grok',
@@ -5522,7 +5813,7 @@ index badca23b..ca3a6211 100644
            localReport: {
              target: 'grok',
              registryPath: '/tmp/browser-state.json',
-@@ -167,6 +321,7 @@ describe('createAuracallBrowserSetupContract', () => {
+@@ -167,6 +341,7 @@ describe('createAuracallBrowserSetupContract', () => {
          version: 1,
          generatedAt: '2026-03-25T23:00:00.000Z',
          target: 'grok',
@@ -5530,7 +5821,7 @@ index badca23b..ca3a6211 100644
          localReport: {
            target: 'grok',
            registryPath: '/tmp/browser-state.json',
-@@ -230,6 +385,7 @@ describe('createAuracallBrowserSetupContract', () => {
+@@ -230,6 +405,7 @@ describe('createAuracallBrowserSetupContract', () => {
          version: 1,
          generatedAt: '2026-03-25T23:00:00.000Z',
          target: 'chatgpt',
@@ -5538,7 +5829,7 @@ index badca23b..ca3a6211 100644
          localReport: {
            target: 'chatgpt',
            registryPath: '/tmp/browser-state.json',
-@@ -281,4 +437,30 @@ describe('createAuracallBrowserSetupContract', () => {
+@@ -281,4 +457,30 @@ describe('createAuracallBrowserSetupContract', () => {
  
      expect(contract.status).toBe('failed');
    });

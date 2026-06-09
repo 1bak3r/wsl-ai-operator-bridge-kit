@@ -110,6 +110,7 @@ Typical smoke checks:
 
 ```bash
 ./scripts/run-node22-npx.sh mcporter list auracall --config examples/mcporter.auracall.json
+./scripts/run-node22-npx.sh mcporter call auracall.browser_readiness target:chatgpt mode:local --config examples/mcporter.auracall.json
 ./scripts/run-node22-npx.sh mcporter call auracall.windows_powershell_probe probe:get_location --config examples/mcporter.auracall.json
 ```
 
@@ -131,10 +132,11 @@ git am /path/to/wsl-ai-operator-bridge-kit/patches/auracall-agentic-browser-runt
 
 The patch contains the browser readiness gates, ChatGPT blocking-state
 classification, human-clear waiting for Cloudflare/CAPTCHA/account gates, MCP
-runtime-control and response-read tools, WSL-to-Windows PowerShell probe
-support, planned bounded local-action execution, same-session MCP smoke checks
-for runtime control, local actions, and Windows PowerShell probing, local
-install/runtime fixes, focused tests, and machine-local handoff docs.
+browser-readiness, runtime-control, and response-read tools, WSL-to-Windows
+PowerShell probe support, planned bounded local-action execution, same-session
+MCP smoke checks for browser readiness, runtime control, local actions, and
+Windows PowerShell probing, local install/runtime fixes, focused tests, and
+machine-local handoff docs.
 
 ## Current Aura-Call Notes
 
@@ -147,6 +149,7 @@ The most useful current readiness gate is:
 
 ```bash
 auracall doctor --target chatgpt --local-only --prune-browser-state
+pnpm run smoke:mcp-browser-readiness
 auracall setup --target chatgpt --skip-login --skip-verify --wait-for-identity auto --json
 ```
 

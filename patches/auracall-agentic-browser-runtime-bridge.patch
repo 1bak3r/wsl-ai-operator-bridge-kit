@@ -1,20 +1,20 @@
-From 03184ba5d2fae0405c5760c10e785d05155e4874 Mon Sep 17 00:00:00 2001
+From b2e5580c62b786707b06656645e4b805f2b586bf Mon Sep 17 00:00:00 2001
 From: 1bak3r <1bak3r@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 18:35:19 -0500
 Subject: [PATCH] Add agentic browser runtime bridge
 
 ---
  .gitignore                                    |   2 +
- LOCAL_AURACALL_README.md                      | 309 +++++++++++
+ LOCAL_AURACALL_README.md                      | 321 +++++++++++
  README.md                                     |   4 +-
- bin/auracall.ts                               | 488 ++++++++++++++++--
+ bin/auracall.ts                               | 488 ++++++++++++++--
  config/mcporter.json                          |  17 +-
  docs/agent-workflows.md                       |   5 +
  docs/browser-mode.md                          |  19 +-
  docs/chromium-forks.md                        |  12 +-
  docs/codex-pro-guard-loop.md                  |  93 ++++
  docs/dev-fixes-log.md                         |  70 +++
- docs/dev/dev-journal.md                       | 153 ++++++
+ docs/dev/dev-journal.md                       | 153 +++++
  docs/linux.md                                 |   2 +-
  docs/mcp.md                                   |  73 +++
  docs/testing/mcp-smoke.md                     |  75 +++
@@ -31,8 +31,8 @@ Subject: [PATCH] Add agentic browser runtime bridge
  scripts/install-user-runtime.ts               |   7 +-
  scripts/run-local-mcp.sh                      |  11 +
  scripts/run-mcporter.sh                       |  20 +
- scripts/smoke-mcp-local-action.ts             | 427 +++++++++++++++
- scripts/smoke-mcp-runtime-control.ts          | 387 ++++++++++++++
+ scripts/smoke-mcp-local-action.ts             | 526 ++++++++++++++++++
+ scripts/smoke-mcp-runtime-control.ts          | 387 +++++++++++++
  scripts/smoke-mcp-windows-powershell-probe.ts | 281 ++++++++++
  scripts/windows-powershell-chat.ps1           |  69 +++
  scripts/wsl-powershell-chat.sh                |  19 +
@@ -42,9 +42,9 @@ Subject: [PATCH] Add agentic browser runtime bridge
  src/browser/profileDoctor.ts                  | 282 +++++++++-
  src/browser/service/browserService.ts         |   9 +-
  src/cli/browserSetup.ts                       |  43 +-
- src/mcp/server.ts                             | 119 ++++-
+ src/mcp/server.ts                             | 119 +++-
  src/mcp/tools/responseCreate.ts               |  95 ++++
- src/mcp/tools/runtimeControl.ts               | 182 +++++++
+ src/mcp/tools/runtimeControl.ts               | 182 ++++++
  src/mcp/tools/windowsPowerShellProbe.ts       | 282 ++++++++++
  src/runtime/configuredExecutor.ts             |  15 +-
  src/runtime/runner.ts                         |  93 +++-
@@ -53,23 +53,23 @@ Subject: [PATCH] Add agentic browser runtime bridge
  .../browser-service/chromeTargetReuse.test.ts |  46 +-
  tests/browser-service/processCheck.test.ts    |  38 ++
  .../browser-service/profileDiscovery.test.ts  | 187 +++++--
- tests/browser-service/stateRegistry.test.ts   |  58 +++
+ tests/browser-service/stateRegistry.test.ts   |  58 ++
  .../windowsChromeDiscovery.test.ts            |  20 +
  tests/browser/browserLoginCore.test.ts        |  42 ++
  tests/browser/browserModeExports.test.ts      |   9 +
  tests/browser/browserService.test.ts          |   1 +
  tests/browser/browserTools.test.ts            |  46 ++
  tests/browser/geminiLogin.test.ts             |   6 +-
- tests/browser/profileDoctor.test.ts           | 364 +++++++++++++
+ tests/browser/profileDoctor.test.ts           | 364 ++++++++++++
  tests/browser/promptComposer.test.ts          |  57 +-
- tests/cli/browserSetup.test.ts                | 202 ++++++++
- tests/mcp.responseCreate.test.ts              | 149 +++++-
+ tests/cli/browserSetup.test.ts                | 202 +++++++
+ tests/mcp.responseCreate.test.ts              | 149 ++++-
  tests/mcp.runtimeControl.test.ts              | 130 +++++
  tests/mcp.server.test.ts                      |  31 +-
  tests/mcp.windowsPowerShellProbe.test.ts      | 101 ++++
  tests/runtime.configuredExecutor.test.ts      |  48 ++
  tests/runtime.serviceHost.test.ts             | 129 +++++
- 65 files changed, 5603 insertions(+), 188 deletions(-)
+ 65 files changed, 5714 insertions(+), 188 deletions(-)
  create mode 100644 LOCAL_AURACALL_README.md
  create mode 100644 docs/codex-pro-guard-loop.md
  create mode 100644 packages/browser-service/src/chromeIdentity.ts
@@ -98,10 +98,10 @@ index b38ed4d9..176739a7 100644
 +runs/
 diff --git a/LOCAL_AURACALL_README.md b/LOCAL_AURACALL_README.md
 new file mode 100644
-index 00000000..aa30bd97
+index 00000000..0f597bf9
 --- /dev/null
 +++ b/LOCAL_AURACALL_README.md
-@@ -0,0 +1,309 @@
+@@ -0,0 +1,321 @@
 +# Local Aura-Call Handoff
 +
 +This README captures the current Aura-Call state on this machine as of
@@ -152,6 +152,8 @@ index 00000000..aa30bd97
 +  the real local-action path:
 +  - `scripts/smoke-mcp-local-action.ts`
 +  - `pnpm run smoke:mcp-local-action`
++  - optional WSL-to-Windows PowerShell bridge check:
++    `pnpm run smoke:mcp-local-action -- --windows-powershell-bridge`
 +- WSL can talk to Windows PowerShell through:
 +  - `scripts/wsl-powershell-chat.sh`
 +  - `scripts/windows-powershell-chat.ps1`
@@ -182,6 +184,7 @@ index 00000000..aa30bd97
 +pnpm run install:user-runtime
 +pnpm run smoke:mcp-runtime-control
 +pnpm run smoke:mcp-local-action
++pnpm run smoke:mcp-local-action -- --windows-powershell-bridge
 +pnpm run smoke:mcp-windows-powershell-probe
 +
 +sh ./scripts/run-mcporter.sh list auracall --config config/mcporter.json | grep runtime_control
@@ -250,6 +253,15 @@ index 00000000..aa30bd97
 +stdout=AURACALL_LOCAL_ACTION_OK
 +leaseOwner=runner:mcp-runtime-control:<pid>
 +leaseStatus=released
++```
++
++The same smoke can execute the WSL-to-Windows PowerShell bridge as the bounded
++local action:
++
++```text
++pnpm run smoke:mcp-local-action -- --windows-powershell-bridge
++mode=windows-powershell-bridge
++powershellStdout=AURACALL_WINDOWS_POWERSHELL_OK
 +```
 +
 +## MCP Windows PowerShell Proof
@@ -2475,14 +2487,15 @@ index 00000000..85606e2f
 +exec npx -y mcporter "$@"
 diff --git a/scripts/smoke-mcp-local-action.ts b/scripts/smoke-mcp-local-action.ts
 new file mode 100644
-index 00000000..c12f001b
+index 00000000..9b923de2
 --- /dev/null
 +++ b/scripts/smoke-mcp-local-action.ts
-@@ -0,0 +1,427 @@
+@@ -0,0 +1,526 @@
 +#!/usr/bin/env tsx
 +import fs from 'node:fs/promises';
 +import os from 'node:os';
 +import path from 'node:path';
++import { fileURLToPath } from 'node:url';
 +import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 +import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 +import { setAuracallHomeDirOverrideForTest } from '../src/auracallHome.js';
@@ -2501,10 +2514,18 @@ index 00000000..c12f001b
 +interface Options {
 +  keepHome: boolean;
 +  mcpBin: string;
++  mode: LocalActionSmokeMode;
 +}
++
++type LocalActionSmokeMode = 'node' | 'windows-powershell-bridge';
 +
 +const RUN_ID = 'run_mcp_local_action_smoke';
 +const EXPECTED_STDOUT = 'AURACALL_LOCAL_ACTION_OK';
++const EXPECTED_POWERSHELL_STDOUT = 'AURACALL_WINDOWS_POWERSHELL_OK';
++const SCRIPT_DIR = path.dirname(fileURLToPath(import.meta.url));
++const REPO_ROOT = path.resolve(SCRIPT_DIR, '..');
++const WSL_POWERSHELL_BRIDGE_SCRIPT = path.join(REPO_ROOT, 'scripts', 'wsl-powershell-chat.sh');
++const WINDOWS_POWERSHELL_EXE = '/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe';
 +
 +function expandHome(input: string): string {
 +  if (input === '~') return os.homedir();
@@ -2522,6 +2543,7 @@ index 00000000..c12f001b
 +  const options: Options = {
 +    keepHome: false,
 +    mcpBin: path.join(os.homedir(), '.local', 'bin', 'auracall-mcp'),
++    mode: 'node',
 +  };
 +  for (let index = 0; index < argv.length; index += 1) {
 +    const arg = argv[index];
@@ -2535,6 +2557,10 @@ index 00000000..c12f001b
 +    }
 +    if (arg === '--keep-home') {
 +      options.keepHome = true;
++      continue;
++    }
++    if (arg === '--windows-powershell-bridge') {
++      options.mode = 'windows-powershell-bridge';
 +      continue;
 +    }
 +    if (arg === '--help' || arg === '-h') {
@@ -2553,14 +2579,19 @@ index 00000000..c12f001b
 +  pnpm tsx scripts/smoke-mcp-local-action.ts [options]
 +
 +Options:
-+  --mcp-bin <path>  AuraCall MCP binary. Default: ~/.local/bin/auracall-mcp
-+  --keep-home       Keep the temporary AURACALL_HOME_DIR for inspection
-+  -h, --help        Show this help
++  --mcp-bin <path>              AuraCall MCP binary. Default: ~/.local/bin/auracall-mcp
++  --windows-powershell-bridge   Execute the WSL-to-Windows PowerShell bridge script
++  --keep-home                   Keep the temporary AURACALL_HOME_DIR for inspection
++  -h, --help                    Show this help
 +`);
 +}
 +
-+async function writeFixtureConfig(homeDir: string): Promise<string> {
++async function writeFixtureConfig(homeDir: string, mode: LocalActionSmokeMode): Promise<string> {
 +  const configPath = path.join(homeDir, 'config.json');
++  const allowedCommands =
++    mode === 'windows-powershell-bridge'
++      ? [WSL_POWERSHELL_BRIDGE_SCRIPT]
++      : ['node'];
 +  await fs.writeFile(
 +    configPath,
 +    `${JSON.stringify(
@@ -2573,7 +2604,7 @@ index 00000000..c12f001b
 +          localActions: {
 +            shell: {
 +              complexityStage: 'bounded-command',
-+              allowedCommands: ['node'],
++              allowedCommands,
 +              allowedCwdRoots: [homeDir],
 +              defaultShellActionTimeoutMs: 10_000,
 +              maxShellActionTimeoutMs: 30_000,
@@ -2590,14 +2621,19 @@ index 00000000..c12f001b
 +  return configPath;
 +}
 +
-+async function seedPlannedLocalActionRun(homeDir: string): Promise<void> {
++async function seedPlannedLocalActionRun(homeDir: string, mode: LocalActionSmokeMode): Promise<void> {
 +  setAuracallHomeDirOverrideForTest(homeDir);
 +  const control = createExecutionRuntimeControl();
-+  await control.createRun(createPlannedLocalActionBundle(homeDir, new Date().toISOString()));
++  await control.createRun(createPlannedLocalActionBundle(homeDir, mode, new Date().toISOString()));
 +}
 +
-+function createPlannedLocalActionBundle(homeDir: string, createdAt: string): ExecutionRunRecordBundle {
++function createPlannedLocalActionBundle(
++  homeDir: string,
++  mode: LocalActionSmokeMode,
++  createdAt: string,
++): ExecutionRunRecordBundle {
 +  const stepId = `${RUN_ID}:step:1`;
++  const plannedAction = createPlannedLocalAction(mode, homeDir, createdAt, stepId);
 +  const events = [
 +    createExecutionRunEvent({
 +      id: `${RUN_ID}:event:run-created`,
@@ -2659,7 +2695,7 @@ index 00000000..c12f001b
 +            localActionPolicy: {
 +              mode: 'allowed',
 +              allowedActionKinds: ['shell'],
-+              allowedCommands: ['node'],
++              allowedCommands: [plannedAction.command],
 +              allowedCwdRoots: [homeDir],
 +            },
 +          },
@@ -2667,22 +2703,7 @@ index 00000000..c12f001b
 +        },
 +      }),
 +    ],
-+    localActionRequests: [
-+      createTeamRunLocalActionRequest({
-+        id: `${RUN_ID}:action:${stepId}:bundle:1`,
-+        teamRunId: RUN_ID,
-+        ownerStepId: stepId,
-+        kind: 'shell',
-+        summary: 'Run one bounded node command from the host runtime.',
-+        command: 'node',
-+        args: ['-e', `process.stdout.write(${JSON.stringify(EXPECTED_STDOUT)})`],
-+        structuredPayload: {
-+          cwd: homeDir,
-+          timeoutMs: 10_000,
-+        },
-+        createdAt,
-+      }),
-+    ],
++    localActionRequests: [plannedAction],
 +    sharedState: createExecutionRunSharedState({
 +      id: `${RUN_ID}:state`,
 +      runId: RUN_ID,
@@ -2695,6 +2716,49 @@ index 00000000..c12f001b
 +    }),
 +    events,
 +  });
++}
++
++function createPlannedLocalAction(
++  mode: LocalActionSmokeMode,
++  homeDir: string,
++  createdAt: string,
++  stepId: string,
++) {
++  if (mode === 'windows-powershell-bridge') {
++    return createTeamRunLocalActionRequest({
++      id: `${RUN_ID}:action:${stepId}:bundle:1`,
++      teamRunId: RUN_ID,
++      ownerStepId: stepId,
++      kind: 'shell',
++      summary: 'Run the WSL-to-Windows PowerShell bridge from the host runtime.',
++      command: WSL_POWERSHELL_BRIDGE_SCRIPT,
++      args: [`Write-Output ${quotePowerShellString(EXPECTED_POWERSHELL_STDOUT)}`],
++      structuredPayload: {
++        cwd: homeDir,
++        timeoutMs: 20_000,
++      },
++      createdAt,
++    });
++  }
++
++  return createTeamRunLocalActionRequest({
++    id: `${RUN_ID}:action:${stepId}:bundle:1`,
++    teamRunId: RUN_ID,
++    ownerStepId: stepId,
++    kind: 'shell',
++    summary: 'Run one bounded node command from the host runtime.',
++    command: 'node',
++    args: ['-e', `process.stdout.write(${JSON.stringify(EXPECTED_STDOUT)})`],
++    structuredPayload: {
++      cwd: homeDir,
++      timeoutMs: 10_000,
++    },
++    createdAt,
++  });
++}
++
++function quotePowerShellString(value: string): string {
++  return `'${value.replace(/'/g, "''")}'`;
 +}
 +
 +async function callInstalledMcp(input: {
@@ -2796,6 +2860,7 @@ index 00000000..c12f001b
 +  actionStdout: string;
 +  leaseOwner: string;
 +  leaseStatus: string;
++  powershellStdout: string | null;
 +}> {
 +  setAuracallHomeDirOverrideForTest(homeDir);
 +  const control = createExecutionRuntimeControl();
@@ -2810,7 +2875,14 @@ index 00000000..c12f001b
 +  assertEqual(request.status, 'executed', 'local action status');
 +  const resultPayload = asRecord(request.resultPayload, 'local action resultPayload');
 +  assertEqual(resultPayload.exitCode, 0, 'local action exitCode');
-+  assertEqual(resultPayload.stdout, EXPECTED_STDOUT, 'local action stdout');
++  const actionStdout = expectString(resultPayload.stdout, 'local action stdout');
++  const powershellStdout =
++    request.command === WSL_POWERSHELL_BRIDGE_SCRIPT
++      ? assertPowerShellBridgeStdout(actionStdout)
++      : null;
++  if (powershellStdout === null) {
++    assertEqual(actionStdout, EXPECTED_STDOUT, 'local action stdout');
++  }
 +  const lease = record.bundle.leases.at(-1);
 +  if (!lease) throw new Error('Stored run has no lease record.');
 +  if (!lease.ownerId.startsWith('runner:mcp-runtime-control:')) {
@@ -2820,10 +2892,33 @@ index 00000000..c12f001b
 +  assertEqual(lease.releaseReason, 'completed', 'lease release reason');
 +  return {
 +    actionStatus: request.status,
-+    actionStdout: String(resultPayload.stdout),
++    actionStdout,
 +    leaseOwner: lease.ownerId,
 +    leaseStatus: lease.status,
++    powershellStdout,
 +  };
++}
++
++function assertPowerShellBridgeStdout(stdout: string): string {
++  const records = stdout.split(/\r?\n/u).filter((line) => line.trim().length > 0).map((line) => {
++    try {
++      return JSON.parse(line) as Record<string, unknown>;
++    } catch {
++      throw new Error(`PowerShell bridge stdout line was not JSON: ${line}`);
++    }
++  });
++  const result = records.find((record) => record.type === 'result');
++  if (!result) {
++    throw new Error('PowerShell bridge stdout did not include a result record.');
++  }
++  assertEqual(result.ok, true, 'PowerShell bridge result ok');
++  const resultStdout = Array.isArray(result.stdout)
++    ? result.stdout.filter((value): value is string => typeof value === 'string')
++    : [];
++  if (!resultStdout.includes(EXPECTED_POWERSHELL_STDOUT)) {
++    throw new Error(`PowerShell bridge stdout did not include ${EXPECTED_POWERSHELL_STDOUT}.`);
++  }
++  return EXPECTED_POWERSHELL_STDOUT;
 +}
 +
 +function assertToolListed(tools: Array<{ name?: string }>, toolName: string): void {
@@ -2845,6 +2940,13 @@ index 00000000..c12f001b
 +  return value as Record<string, unknown>;
 +}
 +
++function expectString(value: unknown, label: string): string {
++  if (typeof value !== 'string') {
++    throw new Error(`${label}: expected string, got ${String(value)}.`);
++  }
++  return value;
++}
++
 +function normalizeEnv(env: NodeJS.ProcessEnv): Record<string, string> {
 +  return Object.fromEntries(
 +    Object.entries(env).filter((entry): entry is [string, string] =>
@@ -2857,11 +2959,11 @@ index 00000000..c12f001b
 +  const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auracall-mcp-local-action-smoke-'));
 +  const priorCwd = process.cwd();
 +  try {
-+    const configPath = await writeFixtureConfig(homeDir);
++    const configPath = await writeFixtureConfig(homeDir, options.mode);
 +    process.env.AURACALL_HOME_DIR = homeDir;
 +    process.env.AURACALL_CONFIG_PATH = configPath;
 +    process.chdir(homeDir);
-+    await seedPlannedLocalActionRun(homeDir);
++    await seedPlannedLocalActionRun(homeDir, options.mode);
 +    const protocol = await callInstalledMcp({
 +      mcpBin: options.mcpBin,
 +      cwd: homeDir,
@@ -2875,6 +2977,13 @@ index 00000000..c12f001b
 +        AURACALL_CONFIG_PATH: configPath,
 +        // biome-ignore lint/style/useNamingConvention: environment variables stay upper snake case
 +        AURACALL_SYSTEM_CONFIG_PATH: path.join(homeDir, 'missing-system-config.json'),
++        ...(options.mode === 'windows-powershell-bridge'
++          ? {
++              // biome-ignore lint/style/useNamingConvention: environment variables stay upper snake case
++              AURACALL_WINDOWS_POWERSHELL:
++                process.env.AURACALL_WINDOWS_POWERSHELL ?? WINDOWS_POWERSHELL_EXE,
++            }
++          : {}),
 +      },
 +    });
 +    const stored = await assertStoredBundle(homeDir);
@@ -2885,12 +2994,14 @@ index 00000000..c12f001b
 +      `claim=${protocol.claimStatus}`,
 +      `drain=${protocol.drainStatus}`,
 +      `run_status=${protocol.runStatus}`,
++      `mode=${options.mode}`,
 +      `localAction=${stored.actionStatus}`,
 +      `stdout=${stored.actionStdout}`,
++      stored.powershellStdout === null ? null : `powershellStdout=${stored.powershellStdout}`,
 +      `leaseOwner=${stored.leaseOwner}`,
 +      `leaseStatus=${stored.leaseStatus}`,
 +      `fixtureHome=${homeDir}`,
-+    ].join('\n'));
++    ].filter((line): line is string => line !== null).join('\n'));
 +  } finally {
 +    process.chdir(priorCwd);
 +    setAuracallHomeDirOverrideForTest(null);

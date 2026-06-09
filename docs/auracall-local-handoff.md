@@ -27,6 +27,11 @@ This note records the local Aura-Call state that produced this bridge kit.
   - claim and drain the run through installed `~/.local/bin/auracall-mcp`;
   - the stored local-action result is `executed` with
     `stdout=AURACALL_LOCAL_ACTION_OK`.
+- The same installed local-action smoke can execute the WSL-to-Windows
+  PowerShell JSONL bridge as the bounded action:
+  - `pnpm run smoke:mcp-local-action -- --windows-powershell-bridge`
+  - the stored local-action result is `executed` with
+    `powershellStdout=AURACALL_WINDOWS_POWERSHELL_OK`.
 - WSL can call Windows PowerShell through the JSONL bridge and preserve a
   stateful PowerShell working directory across commands.
 - The installed MCP `windows_powershell_probe` tool now has a same-session
@@ -39,7 +44,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-03184ba5 Add agentic browser runtime bridge
+b2e5580c Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -60,6 +65,7 @@ pnpm run typecheck
 pnpm run build
 pnpm run smoke:mcp-runtime-control
 pnpm run smoke:mcp-local-action
+pnpm run smoke:mcp-local-action -- --windows-powershell-bridge
 pnpm run smoke:mcp-windows-powershell-probe
 pnpm run smoke:mcp-windows-powershell-probe -- --devtools-port 55855
 ```

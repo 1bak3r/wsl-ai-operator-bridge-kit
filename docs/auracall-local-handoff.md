@@ -9,6 +9,7 @@ This note records the local Aura-Call state that produced this bridge kit.
   - `~/.local/bin/auracall`
   - `~/.local/bin/auracall-mcp`
 - MCP tools added or verified:
+  - `browser_control`
   - `browser_readiness`
   - `response_read`
   - `runtime_control`
@@ -42,6 +43,12 @@ This note records the local Aura-Call state that produced this bridge kit.
   that starts `~/.local/bin/auracall-mcp`, lists the tool, calls
   `browser_readiness`, and validates the structured readiness state returned
   from the same `auracall.browser-doctor` contract as `auracall doctor --json`.
+- The installed MCP `browser_control` tool now has a same-session smoke check
+  that starts `~/.local/bin/auracall-mcp`, lists the tool, calls
+  `browser_control action=prune-browser-state`, and validates the structured
+  action/readiness result. The tool only prunes dead browser-state entries or
+  opens the managed login browser; it does not type, click, solve, or bypass
+  Cloudflare/CAPTCHA/account-auth gates.
 
 ## Published Artifact
 
@@ -49,7 +56,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-3abe8209 Add agentic browser runtime bridge
+3c44075a Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -71,6 +78,7 @@ pnpm run build
 pnpm run smoke:mcp-runtime-control
 pnpm run smoke:mcp-local-action
 pnpm run smoke:mcp-local-action -- --windows-powershell-bridge
+pnpm run smoke:mcp-browser-control
 pnpm run smoke:mcp-browser-readiness
 pnpm run smoke:mcp-windows-powershell-probe
 pnpm run smoke:mcp-windows-powershell-probe -- --devtools-port 55855
@@ -88,6 +96,12 @@ The latest installed browser-readiness MCP smoke returned:
 browser_readiness target=chatgpt mode=local ok=false state=no-live-managed-browser severity=warning requiresHuman=false agentAction=launch-login canDriveBrowser=false
 agentCommand=auracall login --target chatgpt --wait-for-manual-clear auto
 recommendedAction=Run "auracall login --target chatgpt" or start a browser-backed run, then rerun "auracall doctor --target chatgpt".
+```
+
+The latest installed browser-control MCP smoke returned:
+
+```text
+browser_control target=chatgpt action=prune-browser-state ok=true performed=true state=no-live-managed-browser agentAction=launch-login
 ```
 
 ## Current Browser Readiness Blocker

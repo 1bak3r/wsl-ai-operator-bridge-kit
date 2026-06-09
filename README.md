@@ -132,15 +132,16 @@ git am /path/to/wsl-ai-operator-bridge-kit/patches/auracall-agentic-browser-runt
 The patch contains the browser readiness gates, ChatGPT blocking-state
 classification, human-clear waiting for Cloudflare/CAPTCHA/account gates, MCP
 runtime-control and response-read tools, WSL-to-Windows PowerShell probe
-support, local install/runtime fixes, focused tests, and machine-local handoff
-docs.
+support, same-session MCP smoke checks for runtime control and Windows
+PowerShell probing, local install/runtime fixes, focused tests, and
+machine-local handoff docs.
 
 ## Current Aura-Call Notes
 
 See [docs/auracall-local-handoff.md](docs/auracall-local-handoff.md) for the
 machine-local state that motivated this kit, including the MCP runtime-control
-proof and the remaining ChatGPT browser manual-clear / identity-verification
-blocker.
+and Windows PowerShell probe proofs and the remaining ChatGPT browser
+manual-clear / identity-verification blocker.
 
 The most useful current readiness gate is:
 

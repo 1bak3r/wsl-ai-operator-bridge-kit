@@ -1,11 +1,11 @@
-From 8514448807f0ac2e61679826224b3564b58fbdaf Mon Sep 17 00:00:00 2001
+From b26bcb39df043f7121ecdd805074344d4ade1088 Mon Sep 17 00:00:00 2001
 From: 1bak3r <1bak3r@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 18:35:19 -0500
 Subject: [PATCH] Add agentic browser runtime bridge
 
 ---
  .gitignore                                    |   2 +
- LOCAL_AURACALL_README.md                      | 247 +++++++++
+ LOCAL_AURACALL_README.md                      | 281 ++++++++++
  README.md                                     |   4 +-
  bin/auracall.ts                               | 488 ++++++++++++++++--
  config/mcporter.json                          |  17 +-
@@ -20,7 +20,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  docs/testing/mcp-smoke.md                     |  75 +++
  docs/windows-work.md                          |  15 +
  docs/windows.md                               |  11 +
- package.json                                  |   3 +-
+ package.json                                  |   4 +-
  packages/browser-service/src/browserTools.ts  |  31 +-
  .../browser-service/src/chromeIdentity.ts     |  44 ++
  .../browser-service/src/chromeLifecycle.ts    | 107 +++-
@@ -32,6 +32,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  scripts/run-local-mcp.sh                      |  11 +
  scripts/run-mcporter.sh                       |  20 +
  scripts/smoke-mcp-runtime-control.ts          | 387 ++++++++++++++
+ scripts/smoke-mcp-windows-powershell-probe.ts | 281 ++++++++++
  scripts/windows-powershell-chat.ps1           |  69 +++
  scripts/wsl-powershell-chat.sh                |  19 +
  src/browser/actions/promptComposer.ts         |   3 +
@@ -66,13 +67,14 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/mcp.server.test.ts                      |  31 +-
  tests/mcp.windowsPowerShellProbe.test.ts      | 101 ++++
  tests/runtime.configuredExecutor.test.ts      |  48 ++
- 62 files changed, 4625 insertions(+), 174 deletions(-)
+ 63 files changed, 4941 insertions(+), 174 deletions(-)
  create mode 100644 LOCAL_AURACALL_README.md
  create mode 100644 docs/codex-pro-guard-loop.md
  create mode 100644 packages/browser-service/src/chromeIdentity.ts
  create mode 100755 scripts/run-local-mcp.sh
  create mode 100755 scripts/run-mcporter.sh
  create mode 100644 scripts/smoke-mcp-runtime-control.ts
+ create mode 100644 scripts/smoke-mcp-windows-powershell-probe.ts
  create mode 100644 scripts/windows-powershell-chat.ps1
  create mode 100755 scripts/wsl-powershell-chat.sh
  create mode 100644 src/mcp/tools/runtimeControl.ts
@@ -93,10 +95,10 @@ index b38ed4d9..176739a7 100644
 +runs/
 diff --git a/LOCAL_AURACALL_README.md b/LOCAL_AURACALL_README.md
 new file mode 100644
-index 00000000..b31255a8
+index 00000000..04dc93e9
 --- /dev/null
 +++ b/LOCAL_AURACALL_README.md
-@@ -0,0 +1,247 @@
+@@ -0,0 +1,281 @@
 +# Local Aura-Call Handoff
 +
 +This README captures the current Aura-Call state on this machine as of
@@ -137,6 +139,12 @@ index 00000000..b31255a8
 +- The same-session MCP claim/drain proof is now committed as:
 +  - `scripts/smoke-mcp-runtime-control.ts`
 +  - `pnpm run smoke:mcp-runtime-control`
++- The installed MCP `windows_powershell_probe` bridge is now covered by a
++  same-session smoke:
++  - `scripts/smoke-mcp-windows-powershell-probe.ts`
++  - `pnpm run smoke:mcp-windows-powershell-probe`
++  - optional live browser check:
++    `pnpm run smoke:mcp-windows-powershell-probe -- --devtools-port 55855`
 +- WSL can talk to Windows PowerShell through:
 +  - `scripts/wsl-powershell-chat.sh`
 +  - `scripts/windows-powershell-chat.ps1`
@@ -166,6 +174,7 @@ index 00000000..b31255a8
 +pnpm run build
 +pnpm run install:user-runtime
 +pnpm run smoke:mcp-runtime-control
++pnpm run smoke:mcp-windows-powershell-probe
 +
 +sh ./scripts/run-mcporter.sh list auracall --config config/mcporter.json | grep runtime_control
 +sh ./scripts/run-mcporter.sh list auracall-local --config config/mcporter.json | grep runtime_control
@@ -210,6 +219,33 @@ index 00000000..b31255a8
 +lease owner: runner:mcp-runtime-control:<pid>
 +lease status: released
 +step summary: bounded local runner pass completed
++```
++
++## MCP Windows PowerShell Proof
++
++The installed MCP PowerShell proof starts `~/.local/bin/auracall-mcp`, lists
++tools through one MCP SDK stdio connection, calls `windows_powershell_probe`
++with `probe=get_location`, and verifies that Windows PowerShell returns its
++current path and version. When a managed browser is listening, pass
++`--devtools-port 55855` to also verify that Windows PowerShell can read the
++Chrome DevTools `/json/version` endpoint.
++
++Observed result:
++
++```text
++windows-powershell MCP smoke: pass
++tool=windows_powershell_probe
++listed=ok
++locationPath=<Windows PowerShell cwd>
++powershellVersion=<version>
++devtools=skipped
++```
++
++Observed live browser result with the managed Windows Chrome instance:
++
++```text
++devtoolsPort=55855
++devtoolsBrowser=Chrome/148.0.7778.218
 +```
 +
 +## Current Browser Blocker
@@ -1852,10 +1888,10 @@ index c95ba0e9..ec0a7521 100644
  - mcporter chrome-devtools: requires a valid `CHROME_DEVTOOLS_URL` from a live session; otherwise calls will fail.
  - agent-scripts helpers (`runner`, `scripts/committer`) are bash-based and may fail under PowerShell/CMD; run commands directly if they misbehave.
 diff --git a/package.json b/package.json
-index 1b0e10c1..56eae98a 100644
+index 1b0e10c1..6ae45c4b 100644
 --- a/package.json
 +++ b/package.json
-@@ -28,10 +28,11 @@
+@@ -28,10 +28,12 @@
      "test": "vitest run",
      "test:mcp": "pnpm run build && pnpm run test:mcp:unit && pnpm run test:mcp:mcporter",
      "test:mcp:unit": "vitest run tests/mcp*.test.ts tests/mcp/**/*.test.ts",
@@ -1865,6 +1901,7 @@ index 1b0e10c1..56eae98a 100644
      "smoke:mcp-api-status": "tsx scripts/smoke-api-status-mcp.ts --mode both --port 18081",
      "smoke:mcp-ops-browser": "tsx scripts/smoke-ops-browser-mcp.ts",
 +    "smoke:mcp-runtime-control": "tsx scripts/smoke-mcp-runtime-control.ts",
++    "smoke:mcp-windows-powershell-probe": "tsx scripts/smoke-mcp-windows-powershell-probe.ts",
      "smoke:scheduler-history": "tsx scripts/smoke-account-mirror-scheduler-history.ts",
      "smoke:completion-control": "tsx scripts/smoke-account-mirror-completion-control.ts",
      "smoke:completion-hydration": "tsx scripts/smoke-account-mirror-completion-hydration.ts",
@@ -2785,6 +2822,293 @@ index 00000000..4e605ef4
 +  } finally {
 +    process.chdir(priorCwd);
 +    setAuracallHomeDirOverrideForTest(null);
++    if (!options.keepHome) {
++      await fs.rm(homeDir, { recursive: true, force: true });
++    }
++  }
++}
++
++main().then(() => {
++  process.exit(0);
++}).catch((error: unknown) => {
++  console.error(error instanceof Error ? error.message : String(error));
++  process.exit(1);
++});
+diff --git a/scripts/smoke-mcp-windows-powershell-probe.ts b/scripts/smoke-mcp-windows-powershell-probe.ts
+new file mode 100644
+index 00000000..daf41be3
+--- /dev/null
++++ b/scripts/smoke-mcp-windows-powershell-probe.ts
+@@ -0,0 +1,281 @@
++#!/usr/bin/env tsx
++import fs from 'node:fs/promises';
++import os from 'node:os';
++import path from 'node:path';
++import { Client } from '@modelcontextprotocol/sdk/client/index.js';
++import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
++
++interface Options {
++  devtoolsPort: number | null;
++  keepHome: boolean;
++  mcpBin: string;
++}
++
++function expandHome(input: string): string {
++  if (input === '~') return os.homedir();
++  if (input.startsWith('~/')) return path.join(os.homedir(), input.slice(2));
++  return input;
++}
++
++function resolveMcpCommand(input: string): string {
++  const expanded = expandHome(input);
++  if (path.isAbsolute(expanded)) return expanded;
++  return /[\\/]/.test(expanded) ? path.resolve(process.cwd(), expanded) : expanded;
++}
++
++function parseArgs(argv: string[]): Options {
++  const options: Options = {
++    devtoolsPort: parseOptionalPort(
++      process.env.AURACALL_SMOKE_DEVTOOLS_PORT ?? process.env.AURACALL_BROWSER_DEBUG_PORT,
++    ),
++    keepHome: false,
++    mcpBin: path.join(os.homedir(), '.local', 'bin', 'auracall-mcp'),
++  };
++  for (let index = 0; index < argv.length; index += 1) {
++    const arg = argv[index];
++    if (arg === '--') continue;
++    if (arg === '--mcp-bin') {
++      const value = argv[index + 1];
++      if (!value) throw new Error('--mcp-bin requires a path.');
++      options.mcpBin = resolveMcpCommand(value);
++      index += 1;
++      continue;
++    }
++    if (arg === '--devtools-port') {
++      const value = argv[index + 1];
++      if (!value) throw new Error('--devtools-port requires a port.');
++      options.devtoolsPort = parseRequiredPort(value, '--devtools-port');
++      index += 1;
++      continue;
++    }
++    if (arg === '--keep-home') {
++      options.keepHome = true;
++      continue;
++    }
++    if (arg === '--help' || arg === '-h') {
++      printHelp();
++      process.exit(0);
++    }
++    throw new Error(`Unknown option: ${arg}`);
++  }
++  return options;
++}
++
++function printHelp(): void {
++  console.log(`Smoke windows_powershell_probe through one MCP stdio process.
++
++Usage:
++  pnpm tsx scripts/smoke-mcp-windows-powershell-probe.ts [options]
++
++Options:
++  --mcp-bin <path>       AuraCall MCP binary. Default: ~/.local/bin/auracall-mcp
++  --devtools-port <port> Also prove Windows PowerShell can read /json/version
++                         from a live Chrome DevTools port
++  --keep-home            Keep the temporary AURACALL_HOME_DIR for inspection
++  -h, --help             Show this help
++`);
++}
++
++function parseOptionalPort(value: string | undefined): number | null {
++  if (!value) return null;
++  return parseRequiredPort(value, 'devtools port environment variable');
++}
++
++function parseRequiredPort(value: string, label: string): number {
++  const port = Number(value);
++  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
++    throw new Error(`${label} must be an integer TCP port from 1 to 65535.`);
++  }
++  return port;
++}
++
++async function writeFixtureConfig(homeDir: string): Promise<string> {
++  const configPath = path.join(homeDir, 'config.json');
++  await fs.writeFile(
++    configPath,
++    `${JSON.stringify(
++      {
++        version: 2,
++        model: 'gpt-5.2',
++        engine: 'api',
++        auracallProfile: 'default',
++      },
++      null,
++      2,
++    )}\n`,
++    'utf8',
++  );
++  return configPath;
++}
++
++async function callInstalledMcp(input: {
++  devtoolsPort: number | null;
++  env: Record<string, string>;
++  mcpBin: string;
++  cwd: string;
++}): Promise<{
++  devtoolsBrowser: string | null;
++  devtoolsPort: number | null;
++  locationPath: string;
++  powershellVersion: string;
++}> {
++  const client = new Client({ name: 'auracall-windows-powershell-mcp-smoke', version: '0.0.0' });
++  let stderr = '';
++  const transport = new StdioClientTransport({
++    command: input.mcpBin,
++    cwd: input.cwd,
++    env: input.env,
++    stderr: 'pipe',
++  });
++  transport.stderr?.on('data', (chunk) => {
++    stderr += String(chunk);
++  });
++
++  try {
++    await client.connect(transport);
++    const { tools } = await client.listTools({}, { timeout: 10_000 });
++    assertToolListed(tools, 'windows_powershell_probe');
++
++    const location = await client.callTool(
++      {
++        name: 'windows_powershell_probe',
++        arguments: {
++          probe: 'get_location',
++          timeoutMs: 10_000,
++        },
++      },
++      undefined,
++      { timeout: 15_000 },
++    );
++    assertEqual(location.isError, false, 'get_location isError');
++    const locationStructured = asRecord(location.structuredContent, 'get_location structuredContent');
++    assertEqual(locationStructured.object, 'windows_powershell_probe', 'get_location object');
++    assertEqual(locationStructured.probe, 'get_location', 'get_location probe');
++    assertEqual(locationStructured.ok, true, 'get_location ok');
++    const locationData = asRecord(locationStructured.data, 'get_location data');
++    const locationPath = expectNonEmptyString(locationData.path, 'get_location data.path');
++    const powershellVersion = expectNonEmptyString(
++      locationData.powershellVersion,
++      'get_location data.powershellVersion',
++    );
++
++    let devtoolsBrowser: string | null = null;
++    if (input.devtoolsPort !== null) {
++      const devtools = await client.callTool(
++        {
++          name: 'windows_powershell_probe',
++          arguments: {
++            probe: 'devtools_version',
++            port: input.devtoolsPort,
++            timeoutMs: 10_000,
++          },
++        },
++        undefined,
++        { timeout: 15_000 },
++      );
++      assertEqual(devtools.isError, false, 'devtools_version isError');
++      const devtoolsStructured = asRecord(devtools.structuredContent, 'devtools_version structuredContent');
++      assertEqual(devtoolsStructured.object, 'windows_powershell_probe', 'devtools_version object');
++      assertEqual(devtoolsStructured.probe, 'devtools_version', 'devtools_version probe');
++      assertEqual(devtoolsStructured.ok, true, 'devtools_version ok');
++      const devtoolsData = asRecord(devtoolsStructured.data, 'devtools_version data');
++      devtoolsBrowser = expectNonEmptyString(devtoolsData.browser, 'devtools_version data.browser');
++    }
++
++    return {
++      devtoolsBrowser,
++      devtoolsPort: input.devtoolsPort,
++      locationPath,
++      powershellVersion,
++    };
++  } finally {
++    await client.close().catch(() => {});
++    transport.close?.();
++    if (stderr.trim().length > 0 && process.env.AURACALL_SMOKE_DEBUG_STDERR === '1') {
++      console.error(stderr.trim());
++    }
++  }
++}
++
++function assertToolListed(tools: Array<{ name?: string }>, toolName: string): void {
++  if (!tools.some((tool) => tool.name === toolName)) {
++    throw new Error(`Installed MCP server did not expose ${toolName}.`);
++  }
++}
++
++function assertEqual(actual: unknown, expected: unknown, label: string): void {
++  if (actual !== expected) {
++    throw new Error(`${label}: expected ${String(expected)}, got ${String(actual)}.`);
++  }
++}
++
++function asRecord(value: unknown, label: string): Record<string, unknown> {
++  if (!value || typeof value !== 'object' || Array.isArray(value)) {
++    throw new Error(`${label}: expected object, got ${String(value)}.`);
++  }
++  return value as Record<string, unknown>;
++}
++
++function expectNonEmptyString(value: unknown, label: string): string {
++  if (typeof value !== 'string' || value.trim().length === 0) {
++    throw new Error(`${label}: expected non-empty string, got ${String(value)}.`);
++  }
++  return value;
++}
++
++function normalizeEnv(env: NodeJS.ProcessEnv): Record<string, string> {
++  return Object.fromEntries(
++    Object.entries(env).filter((entry): entry is [string, string] =>
++      typeof entry[1] === 'string'),
++  );
++}
++
++async function main(): Promise<void> {
++  const options = parseArgs(process.argv.slice(2));
++  const homeDir = await fs.mkdtemp(path.join(os.tmpdir(), 'auracall-mcp-windows-powershell-smoke-'));
++  const priorCwd = process.cwd();
++  try {
++    const configPath = await writeFixtureConfig(homeDir);
++    process.env.AURACALL_HOME_DIR = homeDir;
++    process.env.AURACALL_CONFIG_PATH = configPath;
++    process.chdir(homeDir);
++    const result = await callInstalledMcp({
++      devtoolsPort: options.devtoolsPort,
++      mcpBin: options.mcpBin,
++      cwd: homeDir,
++      env: {
++        ...normalizeEnv(process.env),
++        // biome-ignore lint/style/useNamingConvention: environment variables stay upper snake case
++        AURACALL_DISABLE_KEYTAR: '1',
++        // biome-ignore lint/style/useNamingConvention: environment variables stay upper snake case
++        AURACALL_HOME_DIR: homeDir,
++        // biome-ignore lint/style/useNamingConvention: environment variables stay upper snake case
++        AURACALL_CONFIG_PATH: configPath,
++        // biome-ignore lint/style/useNamingConvention: environment variables stay upper snake case
++        AURACALL_SYSTEM_CONFIG_PATH: path.join(homeDir, 'missing-system-config.json'),
++      },
++    });
++    console.log([
++      'windows-powershell MCP smoke: pass',
++      'tool=windows_powershell_probe',
++      'listed=ok',
++      `locationPath=${result.locationPath}`,
++      `powershellVersion=${result.powershellVersion}`,
++      result.devtoolsPort === null ? 'devtools=skipped' : `devtoolsPort=${result.devtoolsPort}`,
++      result.devtoolsBrowser === null ? null : `devtoolsBrowser=${result.devtoolsBrowser}`,
++      `fixtureHome=${homeDir}`,
++    ].filter((line): line is string => line !== null).join('\n'));
++  } finally {
++    process.chdir(priorCwd);
 +    if (!options.keepHome) {
 +      await fs.rm(homeDir, { recursive: true, force: true });
 +    }

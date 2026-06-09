@@ -23,6 +23,9 @@ This note records the local Aura-Call state that produced this bridge kit.
     `runner:mcp-runtime-control:<pid>` lease.
 - WSL can call Windows PowerShell through the JSONL bridge and preserve a
   stateful PowerShell working directory across commands.
+- The installed MCP `windows_powershell_probe` tool now has a same-session
+  smoke check that starts `~/.local/bin/auracall-mcp`, lists the tool, calls
+  `probe=get_location`, and can optionally verify a live Chrome DevTools port.
 
 ## Published Artifact
 
@@ -30,7 +33,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-85144488 Add agentic browser runtime bridge
+b26bcb39 Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -50,9 +53,15 @@ pnpm vitest run tests/cli/browserSetup.test.ts tests/browser/profileDoctor.test.
 pnpm run typecheck
 pnpm run build
 pnpm run smoke:mcp-runtime-control
+pnpm run smoke:mcp-windows-powershell-probe
+pnpm run smoke:mcp-windows-powershell-probe -- --devtools-port 55855
 ```
 
 All listed checks passed.
+
+The live PowerShell probe smoke returned Windows PowerShell
+`5.1.26100.8521` and verified the managed Chrome DevTools endpoint on port
+`55855` as `Chrome/148.0.7778.218`.
 
 ## Current Browser Readiness Blocker
 

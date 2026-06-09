@@ -49,7 +49,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-72c9fcb1 Add agentic browser runtime bridge
+3abe8209 Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -85,7 +85,8 @@ An earlier live PowerShell probe smoke returned Windows PowerShell
 The latest installed browser-readiness MCP smoke returned:
 
 ```text
-browser_readiness target=chatgpt mode=local ok=false state=no-live-managed-browser severity=warning requiresHuman=false
+browser_readiness target=chatgpt mode=local ok=false state=no-live-managed-browser severity=warning requiresHuman=false agentAction=launch-login canDriveBrowser=false
+agentCommand=auracall login --target chatgpt --wait-for-manual-clear auto
 recommendedAction=Run "auracall login --target chatgpt" or start a browser-backed run, then rerun "auracall doctor --target chatgpt".
 ```
 

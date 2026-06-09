@@ -1,12 +1,12 @@
-From 72c9fcb1129887d20e8ee2a27975666fd49d4c9d Mon Sep 17 00:00:00 2001
+From 3abe82091e2d4114b706ce64d10341a93583863a Mon Sep 17 00:00:00 2001
 From: 1bak3r <1bak3r@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 18:35:19 -0500
 Subject: [PATCH] Add agentic browser runtime bridge
 
 ---
  .gitignore                                    |   2 +
- LOCAL_AURACALL_README.md                      | 355 ++++++++++++
- README.md                                     |   5 +-
+ LOCAL_AURACALL_README.md                      | 358 ++++++++++++
+ README.md                                     |   6 +-
  bin/auracall.ts                               | 488 ++++++++++++++--
  config/mcporter.json                          |  17 +-
  docs/agent-workflows.md                       |   5 +
@@ -31,7 +31,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  scripts/install-user-runtime.ts               |   7 +-
  scripts/run-local-mcp.sh                      |  11 +
  scripts/run-mcporter.sh                       |  20 +
- scripts/smoke-mcp-browser-readiness.ts        | 211 +++++++
+ scripts/smoke-mcp-browser-readiness.ts        | 221 ++++++++
  scripts/smoke-mcp-local-action.ts             | 526 ++++++++++++++++++
  scripts/smoke-mcp-runtime-control.ts          | 387 +++++++++++++
  scripts/smoke-mcp-windows-powershell-probe.ts | 281 ++++++++++
@@ -44,7 +44,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  src/browser/service/browserService.ts         |   9 +-
  src/cli/browserSetup.ts                       |  43 +-
  src/mcp/server.ts                             | 123 +++-
- src/mcp/tools/browserReadiness.ts             | 192 +++++++
+ src/mcp/tools/browserReadiness.ts             | 289 ++++++++++
  src/mcp/tools/responseCreate.ts               |  95 ++++
  src/mcp/tools/runtimeControl.ts               | 182 ++++++
  src/mcp/tools/windowsPowerShellProbe.ts       | 282 ++++++++++
@@ -65,14 +65,14 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/browser/profileDoctor.test.ts           | 400 +++++++++++++
  tests/browser/promptComposer.test.ts          |  57 +-
  tests/cli/browserSetup.test.ts                | 202 +++++++
- tests/mcp.browserReadiness.test.ts            | 236 ++++++++
+ tests/mcp.browserReadiness.test.ts            | 285 ++++++++++
  tests/mcp.responseCreate.test.ts              | 149 ++++-
  tests/mcp.runtimeControl.test.ts              | 130 +++++
  tests/mcp.server.test.ts                      |  31 +-
  tests/mcp.windowsPowerShellProbe.test.ts      | 101 ++++
  tests/runtime.configuredExecutor.test.ts      |  48 ++
  tests/runtime.serviceHost.test.ts             | 129 +++++
- 68 files changed, 6443 insertions(+), 188 deletions(-)
+ 68 files changed, 6603 insertions(+), 188 deletions(-)
  create mode 100644 LOCAL_AURACALL_README.md
  create mode 100644 docs/codex-pro-guard-loop.md
  create mode 100644 packages/browser-service/src/chromeIdentity.ts
@@ -104,10 +104,10 @@ index b38ed4d9..176739a7 100644
 +runs/
 diff --git a/LOCAL_AURACALL_README.md b/LOCAL_AURACALL_README.md
 new file mode 100644
-index 00000000..fdf871b6
+index 00000000..63a2bd25
 --- /dev/null
 +++ b/LOCAL_AURACALL_README.md
-@@ -0,0 +1,355 @@
+@@ -0,0 +1,358 @@
 +# Local Aura-Call Handoff
 +
 +This README captures the current Aura-Call state on this machine as of
@@ -317,13 +317,16 @@ index 00000000..fdf871b6
 +Latest installed smoke:
 +
 +```text
-+browser_readiness target=chatgpt mode=local ok=false state=no-live-managed-browser severity=warning requiresHuman=false
++browser_readiness target=chatgpt mode=local ok=false state=no-live-managed-browser severity=warning requiresHuman=false agentAction=launch-login canDriveBrowser=false
++agentCommand=auracall login --target chatgpt --wait-for-manual-clear auto
 +recommendedAction=Run "auracall login --target chatgpt" or start a browser-backed run, then rerun "auracall doctor --target chatgpt".
 +```
 +
 +This is the MCP-facing gate agents should query before browser-backed work. It
-+reports Cloudflare/CAPTCHA/account-auth pages as human-required readiness
-+states and does not attempt to solve or click anti-bot challenges.
++returns an explicit `agentDecision` object so clients know whether browser
++driving is allowed. Cloudflare/CAPTCHA/account-auth pages resolve to
++human-required decisions and do not attempt to solve or click anti-bot
++challenges.
 +
 +## Current Browser Blocker
 +
@@ -464,10 +467,10 @@ index 00000000..fdf871b6
 +- After manual auth clearance, rerun the real ChatGPT browser prompt and
 +  record the evidence in `docs/dev/dev-journal.md`.
 diff --git a/README.md b/README.md
-index e58fabd8..5bb69eff 100644
+index e58fabd8..2d9af8a5 100644
 --- a/README.md
 +++ b/README.md
-@@ -1398,7 +1398,10 @@ Terminology note:
+@@ -1398,7 +1398,11 @@ Terminology note:
    `media_generation`, media run status readback through
    `media_generation_status`, explicit media artifact recovery through
    `media_generation_materialize`, recent local runtime-run browsing through
@@ -475,7 +478,8 @@ index e58fabd8..5bb69eff 100644
 +  `runtime_runs_recent`, bounded runtime operator controls through
 +  `runtime_control`, constrained WSL-to-Windows diagnostics through
 +  `windows_powershell_probe`, browser readiness gating through
-+  `browser_readiness`, and routine provider workbench discovery through
++  `browser_readiness` with an explicit `agentDecision.canDriveBrowser` /
++  `agentDecision.action`, and routine provider workbench discovery through
    `workbench_capabilities`. When launched from a resolved AuraCall runtime
    profile, the MCP response, media, and workbench tools use the same configured
    browser-backed service bundle as the local API server.
@@ -2529,10 +2533,10 @@ index 00000000..85606e2f
 +exec npx -y mcporter "$@"
 diff --git a/scripts/smoke-mcp-browser-readiness.ts b/scripts/smoke-mcp-browser-readiness.ts
 new file mode 100644
-index 00000000..a8cce801
+index 00000000..988731a6
 --- /dev/null
 +++ b/scripts/smoke-mcp-browser-readiness.ts
-@@ -0,0 +1,211 @@
+@@ -0,0 +1,221 @@
 +#!/usr/bin/env tsx
 +import os from 'node:os';
 +import path from 'node:path';
@@ -2638,6 +2642,9 @@ index 00000000..a8cce801
 +}
 +
 +async function callInstalledMcp(options: Options): Promise<{
++  agentAction: string;
++  agentCanDriveBrowser: boolean;
++  agentCommand: string | null;
 +  ok: boolean;
 +  recommendedAction: string | null;
 +  requiresHuman: boolean;
@@ -2686,7 +2693,11 @@ index 00000000..a8cce801
 +    if (structured.object !== 'browser_readiness') {
 +      throw new Error(`Unexpected object: ${String(structured.object)}`);
 +    }
++    const agentDecision = asRecord(structured.agentDecision, 'browser_readiness agentDecision');
 +    return {
++      agentAction: expectString(agentDecision.action, 'agentDecision.action'),
++      agentCanDriveBrowser: expectBoolean(agentDecision.canDriveBrowser, 'agentDecision.canDriveBrowser'),
++      agentCommand: expectNullableString(agentDecision.command, 'agentDecision.command'),
 +      ok: expectBoolean(structured.ok, 'ok'),
 +      recommendedAction: expectNullableString(structured.recommendedAction, 'recommendedAction'),
 +      requiresHuman: expectBoolean(structured.requiresHuman, 'requiresHuman'),
@@ -2733,8 +2744,11 @@ index 00000000..a8cce801
 +  const options = parseArgs(process.argv.slice(2));
 +  const readiness = await callInstalledMcp(options);
 +  console.log(
-+    `browser_readiness target=${readiness.target} mode=${options.mode} ok=${readiness.ok} state=${readiness.state} severity=${readiness.severity} requiresHuman=${readiness.requiresHuman}`,
++    `browser_readiness target=${readiness.target} mode=${options.mode} ok=${readiness.ok} state=${readiness.state} severity=${readiness.severity} requiresHuman=${readiness.requiresHuman} agentAction=${readiness.agentAction} canDriveBrowser=${readiness.agentCanDriveBrowser}`,
 +  );
++  if (readiness.agentCommand) {
++    console.log(`agentCommand=${readiness.agentCommand}`);
++  }
 +  if (readiness.recommendedAction) {
 +    console.log(`recommendedAction=${readiness.recommendedAction}`);
 +  }
@@ -4909,10 +4923,10 @@ index 962247a3..5da7e021 100644
      console.error('Failed to start auracall-mcp:', error);
 diff --git a/src/mcp/tools/browserReadiness.ts b/src/mcp/tools/browserReadiness.ts
 new file mode 100644
-index 00000000..b3cd5e1d
+index 00000000..9439f82a
 --- /dev/null
 +++ b/src/mcp/tools/browserReadiness.ts
-@@ -0,0 +1,192 @@
+@@ -0,0 +1,289 @@
 +import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 +import { z } from 'zod';
 +import type { ResolvedUserConfig } from '../../config.js';
@@ -4935,6 +4949,16 @@ index 00000000..b3cd5e1d
 +const browserReadinessTargetNames = ['chatgpt', 'grok', 'gemini'] as const;
 +const browserReadinessModeNames = ['local', 'live'] as const;
 +const browserReadinessSeverityNames = ['ready', 'info', 'warning', 'blocked'] as const;
++const browserReadinessAgentActionNames = [
++  'proceed',
++  'setup-browser',
++  'prune-browser-state',
++  'launch-login',
++  'wait-for-human',
++  'configure-identity',
++  'update-selectors',
++  'inspect-diagnostics',
++] as const;
 +
 +const browserReadinessInputShape = {
 +  target: z.enum(browserReadinessTargetNames).optional(),
@@ -4952,6 +4976,12 @@ index 00000000..b3cd5e1d
 +  severity: z.enum(browserReadinessSeverityNames),
 +  requiresHuman: z.boolean(),
 +  recommendedAction: z.string().nullable(),
++  agentDecision: z.object({
++    action: z.enum(browserReadinessAgentActionNames),
++    canDriveBrowser: z.boolean(),
++    command: z.string().nullable(),
++    reason: z.string(),
++  }),
 +  doctor: z.unknown(),
 +} satisfies z.ZodRawShape;
 +
@@ -4968,6 +4998,14 @@ index 00000000..b3cd5e1d
 +
 +type BrowserReadinessInput = z.infer<z.ZodObject<typeof browserReadinessInputShape>>;
 +type BrowserReadinessMode = (typeof browserReadinessModeNames)[number];
++type BrowserReadinessAgentAction = (typeof browserReadinessAgentActionNames)[number];
++
++interface BrowserReadinessAgentDecision {
++  action: BrowserReadinessAgentAction;
++  canDriveBrowser: boolean;
++  command: string | null;
++  reason: string;
++}
 +
 +export function registerBrowserReadinessTool(
 +  server: McpServer,
@@ -5068,6 +5106,7 @@ index 00000000..b3cd5e1d
 +      selectorDiagnosisError,
 +    });
 +    const readiness = doctor.readiness;
++    const agentDecision = createBrowserReadinessAgentDecision(target, doctor);
 +    const structuredContent = {
 +      object: 'browser_readiness' as const,
 +      target,
@@ -5077,6 +5116,7 @@ index 00000000..b3cd5e1d
 +      severity: readiness.severity,
 +      requiresHuman: readiness.requiresHuman,
 +      recommendedAction: readiness.recommendedAction,
++      agentDecision,
 +      doctor,
 +    };
 +
@@ -5087,7 +5127,7 @@ index 00000000..b3cd5e1d
 +          type: 'text' as const,
 +          text:
 +            `Aura-Call browser readiness for ${target}: ${readiness.state}` +
-+            ` (${readiness.severity}); ${readiness.summary}`,
++            ` (${readiness.severity}); action=${agentDecision.action}; ${readiness.summary}`,
 +        },
 +      ],
 +      structuredContent,
@@ -5104,6 +5144,77 @@ index 00000000..b3cd5e1d
 +    throw new Error(`Invalid browser readiness target "${String(target)}".`);
 +  }
 +  return target;
++}
++
++export function createBrowserReadinessAgentDecision(
++  target: BrowserDoctorTarget,
++  doctor: AuracallBrowserDoctorContract,
++): BrowserReadinessAgentDecision {
++  const readiness = doctor.readiness;
++  const state = readiness.state;
++  const reason = readiness.summary;
++  if (readiness.ok) {
++    return {
++      action: 'proceed',
++      canDriveBrowser: true,
++      command: null,
++      reason,
++    };
++  }
++  if (state === 'managed-profile-missing') {
++    return {
++      action: 'setup-browser',
++      canDriveBrowser: false,
++      command: `auracall setup --target ${target}`,
++      reason,
++    };
++  }
++  if (state === 'no-live-managed-browser') {
++    if (doctor.localReport.staleRegistryEntries.length > 0) {
++      return {
++        action: 'prune-browser-state',
++        canDriveBrowser: false,
++        command: `auracall doctor --target ${target} --local-only --prune-browser-state`,
++        reason,
++      };
++    }
++    return {
++      action: 'launch-login',
++      canDriveBrowser: false,
++      command: `auracall login --target ${target} --wait-for-manual-clear auto`,
++      reason,
++    };
++  }
++  if (readiness.requiresHuman || state === 'manual-clear-required' || state === 'login-required') {
++    return {
++      action: 'wait-for-human',
++      canDriveBrowser: false,
++      command: `auracall login --target ${target} --wait-for-manual-clear auto`,
++      reason,
++    };
++  }
++  if (state === 'identity-unconfigured') {
++    return {
++      action: 'configure-identity',
++      canDriveBrowser: false,
++      command: null,
++      reason,
++    };
++  }
++  if (state === 'selector-drift') {
++    return {
++      action: 'update-selectors',
++      canDriveBrowser: false,
++      command: `auracall doctor --target ${target} --save-snapshot`,
++      reason,
++    };
++  }
++  return {
++    action: 'inspect-diagnostics',
++    canDriveBrowser: false,
++    command: `auracall doctor --target ${target} --json --save-snapshot`,
++    reason,
++  };
 +}
 diff --git a/src/mcp/tools/responseCreate.ts b/src/mcp/tools/responseCreate.ts
 index 79b8d21e..7323e23a 100644
@@ -7441,17 +7552,20 @@ index badca23b..0b0cdaf1 100644
  });
 diff --git a/tests/mcp.browserReadiness.test.ts b/tests/mcp.browserReadiness.test.ts
 new file mode 100644
-index 00000000..5745fd9e
+index 00000000..690b11f0
 --- /dev/null
 +++ b/tests/mcp.browserReadiness.test.ts
-@@ -0,0 +1,236 @@
+@@ -0,0 +1,285 @@
 +import { describe, expect, it, vi } from 'vitest';
 +import {
 +  createAuracallBrowserDoctorContract,
 +  type BrowserDoctorIdentityReconciliation,
 +  type BrowserDoctorReport,
 +} from '../src/browser/profileDoctor.js';
-+import { createBrowserReadinessToolHandler } from '../src/mcp/tools/browserReadiness.js';
++import {
++  createBrowserReadinessAgentDecision,
++  createBrowserReadinessToolHandler,
++} from '../src/mcp/tools/browserReadiness.js';
 +
 +function createLocalReport(overrides: Partial<BrowserDoctorReport> = {}): BrowserDoctorReport {
 +  return {
@@ -7547,6 +7661,11 @@ index 00000000..5745fd9e
 +        state: 'no-live-managed-browser',
 +        severity: 'warning',
 +        requiresHuman: false,
++        agentDecision: {
++          action: 'launch-login',
++          canDriveBrowser: false,
++          command: 'auracall login --target chatgpt --wait-for-manual-clear auto',
++        },
 +      },
 +    });
 +  });
@@ -7572,6 +7691,9 @@ index 00000000..5745fd9e
 +      object: 'browser_readiness',
 +      ok: false,
 +      state: 'no-live-managed-browser',
++      agentDecision: {
++        action: 'launch-login',
++      },
 +    });
 +  });
 +
@@ -7677,7 +7799,45 @@ index 00000000..5745fd9e
 +        mode: 'live',
 +        ok: true,
 +        state: 'ready',
++        agentDecision: {
++          action: 'proceed',
++          canDriveBrowser: true,
++          command: null,
++        },
 +      },
++    });
++  });
++
++  it('tells agents to prune stale browser-state before relaunching a dead browser', () => {
++    const staleEntry = {
++      key: 'managed-stale',
++      profilePath: '/tmp/managed/default/chatgpt',
++      profileName: 'Default',
++      pid: 999999,
++      port: 55855,
++      host: 'windows-loopback',
++      alive: false,
++      liveness: 'dead-process' as const,
++      actualPid: null,
++      managed: true,
++      legacy: false,
++      services: ['chatgpt'],
++    };
++    const doctor = createAuracallBrowserDoctorContract({
++      target: 'chatgpt',
++      localReport: createLocalReport({
++        managedRegistryEntry: staleEntry,
++        registryEntries: [staleEntry],
++        staleRegistryEntries: [staleEntry],
++      }),
++      identityReconciliation: createIdentityReconciliation(),
++    });
++
++    expect(createBrowserReadinessAgentDecision('chatgpt', doctor)).toEqual({
++      action: 'prune-browser-state',
++      canDriveBrowser: false,
++      command: 'auracall doctor --target chatgpt --local-only --prune-browser-state',
++      reason: 'No live managed chatgpt browser instance is registered for read-only readiness inspection.',
 +    });
 +  });
 +});

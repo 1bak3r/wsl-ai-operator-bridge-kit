@@ -142,6 +142,20 @@ proof harness:
 Until then it fails closed and prints the safe login/manual-clear command
 without launching browser work.
 
+To prepare the managed login browser through MCP without clicking or typing
+through provider gates, dry-run first:
+
+```bash
+./scripts/prepare-auracall-chatgpt-login.sh
+```
+
+When the dry-run reports `action=launch-login`, pass `--apply` to open the
+managed browser for human sign-in:
+
+```bash
+./scripts/prepare-auracall-chatgpt-login.sh --apply
+```
+
 ## Aura-Call Implementation Patch
 
 The local Aura-Call checkout could not be pushed to `ecochran76/auracall`

@@ -23,6 +23,9 @@
 - Added `scripts/prove-auracall-chatgpt-browser.sh` as the final browser proof
   harness. It checks `agent_host_readiness` first and refuses to launch browser
   prompt work until `canDriveBrowser=true`.
+- Added `scripts/prepare-auracall-chatgpt-login.sh` as a safe MCP setup helper
+  for pruning stale browser state or launching the managed login browser when
+  readiness says that is the next action.
 - Added MCP tools and smokes for:
   - `agent_host_readiness`
   - `browser_readiness`
@@ -111,6 +114,14 @@ nextCommand=auracall login --target chatgpt --wait-for-manual-clear auto
 This script did not launch browser work because readiness did not allow browser driving.
 ```
 
+The safe MCP login-prep helper currently dry-runs to the launch-login action:
+
+```text
+chatgpt login prep: state=no-live-managed-browser action=launch-login canDriveBrowser=false server=auracall
+dry-run: would call auracall.browser_control action:launch-login target:chatgpt
+dry-run: pass --apply to open the managed login browser.
+```
+
 The installed MCP browser-readiness smoke currently reports no live managed ChatGPT browser:
 
 ```text
@@ -139,6 +150,7 @@ pnpm run smoke:mcp-browser-control
 pnpm run smoke:mcp-browser-readiness
 ../wsl-ai-operator-bridge-kit/scripts/wsl-powershell-chat.sh Get-Location
 ../wsl-ai-operator-bridge-kit/scripts/smoke-auracall-bridge.sh
+../wsl-ai-operator-bridge-kit/scripts/prepare-auracall-chatgpt-login.sh
 ../wsl-ai-operator-bridge-kit/scripts/prove-auracall-chatgpt-browser.sh
 ../wsl-ai-operator-bridge-kit/scripts/run-node22-npx.sh mcporter list auracall-local --config ../wsl-ai-operator-bridge-kit/examples/mcporter.auracall.json
 ```
@@ -158,6 +170,13 @@ The original Aura-Call goal is not complete yet. The remaining proof is a real b
 Useful next steps:
 
 1. Run the safe login/manual-clear command above.
+   Or dry-run and apply the MCP helper:
+
+```bash
+./scripts/prepare-auracall-chatgpt-login.sh
+./scripts/prepare-auracall-chatgpt-login.sh --apply
+```
+
 2. Complete ChatGPT sign-in manually in the managed browser.
 3. Rerun:
 

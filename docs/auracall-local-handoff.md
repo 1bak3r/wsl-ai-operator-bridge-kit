@@ -149,6 +149,20 @@ nextCommand=auracall login --target chatgpt --wait-for-manual-clear auto
 This script did not launch browser work because readiness did not allow browser driving.
 ```
 
+The safe MCP login-prep helper is present as:
+
+```bash
+./scripts/prepare-auracall-chatgpt-login.sh
+```
+
+Latest dry-run result:
+
+```text
+chatgpt login prep: state=no-live-managed-browser action=launch-login canDriveBrowser=false server=auracall
+dry-run: would call auracall.browser_control action:launch-login target:chatgpt
+dry-run: pass --apply to open the managed login browser.
+```
+
 The latest installed agent-host-readiness MCP smoke returned:
 
 ```text

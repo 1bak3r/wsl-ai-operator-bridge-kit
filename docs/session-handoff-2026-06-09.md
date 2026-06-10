@@ -20,6 +20,9 @@
   `AURACALL_REPO` when the local Aura-Call checkout is present.
 - Added `scripts/smoke-auracall-bridge.sh` as the all-up bridge check for
   PowerShell, installed Aura-Call MCP, and local-checkout Aura-Call MCP.
+- Added `scripts/prove-auracall-chatgpt-browser.sh` as the final browser proof
+  harness. It checks `agent_host_readiness` first and refuses to launch browser
+  prompt work until `canDriveBrowser=true`.
 - Added MCP tools and smokes for:
   - `agent_host_readiness`
   - `browser_readiness`
@@ -98,6 +101,16 @@ checking local-readiness... ok
 auracall bridge smoke: pass
 ```
 
+The final browser proof harness currently fails closed as expected:
+
+```text
+auracall browser proof: not ready
+state=no-live-managed-browser
+agentAction=launch-login
+nextCommand=auracall login --target chatgpt --wait-for-manual-clear auto
+This script did not launch browser work because readiness did not allow browser driving.
+```
+
 The installed MCP browser-readiness smoke currently reports no live managed ChatGPT browser:
 
 ```text
@@ -126,6 +139,7 @@ pnpm run smoke:mcp-browser-control
 pnpm run smoke:mcp-browser-readiness
 ../wsl-ai-operator-bridge-kit/scripts/wsl-powershell-chat.sh Get-Location
 ../wsl-ai-operator-bridge-kit/scripts/smoke-auracall-bridge.sh
+../wsl-ai-operator-bridge-kit/scripts/prove-auracall-chatgpt-browser.sh
 ../wsl-ai-operator-bridge-kit/scripts/run-node22-npx.sh mcporter list auracall-local --config ../wsl-ai-operator-bridge-kit/examples/mcporter.auracall.json
 ```
 
@@ -152,7 +166,13 @@ pnpm run smoke:mcp-browser-readiness
 auracall doctor --target chatgpt --json
 ```
 
-4. Once readiness is `ready`, run a real browser prompt proof:
+4. Once readiness is `ready`, run the final proof harness:
+
+```bash
+./scripts/prove-auracall-chatgpt-browser.sh
+```
+
+Or run the underlying browser prompt proof directly:
 
 ```bash
 auracall --chatgpt \

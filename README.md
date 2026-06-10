@@ -131,6 +131,17 @@ Typical smoke checks:
 PowerShell bridge, installed Aura-Call MCP, and local-checkout Aura-Call MCP
 through the same Node 22-aware launcher.
 
+When a human has signed into ChatGPT in the managed Aura-Call browser and
+`agent_host_readiness` reports `canDriveBrowser=true`, run the final browser
+proof harness:
+
+```bash
+./scripts/prove-auracall-chatgpt-browser.sh
+```
+
+Until then it fails closed and prints the safe login/manual-clear command
+without launching browser work.
+
 ## Aura-Call Implementation Patch
 
 The local Aura-Call checkout could not be pushed to `ecochran76/auracall`

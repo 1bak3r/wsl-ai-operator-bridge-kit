@@ -132,6 +132,23 @@ checking local-readiness... ok
 auracall bridge smoke: pass
 ```
 
+The final browser proof harness is present as:
+
+```bash
+./scripts/prove-auracall-chatgpt-browser.sh
+```
+
+Latest result on this machine is fail-closed because `agent_host_readiness`
+does not allow browser driving yet:
+
+```text
+auracall browser proof: not ready
+state=no-live-managed-browser
+agentAction=launch-login
+nextCommand=auracall login --target chatgpt --wait-for-manual-clear auto
+This script did not launch browser work because readiness did not allow browser driving.
+```
+
 The latest installed agent-host-readiness MCP smoke returned:
 
 ```text

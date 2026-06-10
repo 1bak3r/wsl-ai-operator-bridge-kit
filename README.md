@@ -119,12 +119,17 @@ cd /path/to/auracall
 Typical smoke checks:
 
 ```bash
+./scripts/smoke-auracall-bridge.sh
 ./scripts/run-node22-npx.sh mcporter list auracall --config examples/mcporter.auracall.json
 ./scripts/run-node22-npx.sh mcporter call auracall.agent_host_readiness target:chatgpt --config examples/mcporter.auracall.json
 ./scripts/run-node22-npx.sh mcporter call auracall.browser_control action:prune-browser-state target:chatgpt --config examples/mcporter.auracall.json
 ./scripts/run-node22-npx.sh mcporter call auracall.browser_readiness target:chatgpt mode:local --config examples/mcporter.auracall.json
 ./scripts/run-node22-npx.sh mcporter call auracall.windows_powershell_probe probe:get_location --config examples/mcporter.auracall.json
 ```
+
+`smoke-auracall-bridge.sh` is the all-up local check. It verifies the JSONL
+PowerShell bridge, installed Aura-Call MCP, and local-checkout Aura-Call MCP
+through the same Node 22-aware launcher.
 
 ## Aura-Call Implementation Patch
 

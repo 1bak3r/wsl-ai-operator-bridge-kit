@@ -120,6 +120,18 @@ The latest bridge-kit no-env local MCP checks passed from the bridge-kit root:
 ./scripts/run-node22-npx.sh mcporter call auracall-local.agent_host_readiness target:chatgpt --config examples/mcporter.auracall.json
 ```
 
+The all-up bridge smoke now covers PowerShell, installed MCP, and local MCP in
+one command:
+
+```text
+checking powershell... ok
+checking installed-list... ok
+checking installed-readiness... ok
+checking local-list... ok
+checking local-readiness... ok
+auracall bridge smoke: pass
+```
+
 The latest installed agent-host-readiness MCP smoke returned:
 
 ```text

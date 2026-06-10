@@ -60,6 +60,11 @@ One-shot command:
 ./scripts/wsl-powershell-chat.sh Get-Location
 ```
 
+The wrapper prefers `WSL_BRIDGE_WINDOWS_POWERSHELL`, then Aura-Call
+PowerShell overrides, then absolute Windows mount paths such as
+`/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe`. It does not
+require `powershell.exe` to be present on the WSL PATH.
+
 Stateful JSONL session:
 
 ```bash

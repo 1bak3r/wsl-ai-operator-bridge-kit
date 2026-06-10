@@ -1,11 +1,11 @@
-From 705b489f6062fcf058d6edd1943e4ee9e4b8c36b Mon Sep 17 00:00:00 2001
+From 6947697e4d4e88b1408a3f45aff9b771bb4935c2 Mon Sep 17 00:00:00 2001
 From: 1bak3r <1bak3r@users.noreply.github.com>
 Date: Mon, 8 Jun 2026 18:35:19 -0500
 Subject: [PATCH] Add agentic browser runtime bridge
 
 ---
  .gitignore                                    |   2 +
- LOCAL_AURACALL_README.md                      | 414 ++++++++++++++
+ LOCAL_AURACALL_README.md                      | 417 ++++++++++++++
  README.md                                     |  11 +-
  bin/auracall.ts                               | 488 ++++++++++++++--
  config/mcporter.json                          |  17 +-
@@ -38,7 +38,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  scripts/smoke-mcp-runtime-control.ts          | 387 +++++++++++++
  scripts/smoke-mcp-windows-powershell-probe.ts | 281 ++++++++++
  scripts/windows-powershell-chat.ps1           |  69 +++
- scripts/wsl-powershell-chat.sh                |  19 +
+ scripts/wsl-powershell-chat.sh                |  44 ++
  src/browser/actions/promptComposer.ts         |   3 +
  src/browser/index.ts                          |  34 +-
  src/browser/login.ts                          |  39 +-
@@ -78,7 +78,7 @@ Subject: [PATCH] Add agentic browser runtime bridge
  tests/mcp.windowsPowerShellProbe.test.ts      | 101 ++++
  tests/runtime.configuredExecutor.test.ts      |  48 ++
  tests/runtime.serviceHost.test.ts             | 129 +++++
- 74 files changed, 7878 insertions(+), 205 deletions(-)
+ 74 files changed, 7906 insertions(+), 205 deletions(-)
  create mode 100644 LOCAL_AURACALL_README.md
  create mode 100644 docs/codex-pro-guard-loop.md
  create mode 100644 packages/browser-service/src/chromeIdentity.ts
@@ -116,10 +116,10 @@ index b38ed4d9..176739a7 100644
 +runs/
 diff --git a/LOCAL_AURACALL_README.md b/LOCAL_AURACALL_README.md
 new file mode 100644
-index 00000000..008d15bf
+index 00000000..d9b67c87
 --- /dev/null
 +++ b/LOCAL_AURACALL_README.md
-@@ -0,0 +1,414 @@
+@@ -0,0 +1,417 @@
 +# Local Aura-Call Handoff
 +
 +This README captures the current Aura-Call state on this machine as of
@@ -200,6 +200,9 @@ index 00000000..008d15bf
 +- WSL can talk to Windows PowerShell through:
 +  - `scripts/wsl-powershell-chat.sh`
 +  - `scripts/windows-powershell-chat.ps1`
++  - the WSL shell wrapper falls back to
++    `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe` when
++    `powershell.exe` is not on PATH
 +- The machine-local host-action ceiling allows bounded shell actions under the
 +  Aura-Call repo root, so allowed local actions can call the WSL-to-Windows
 +  bridge without exposing arbitrary PowerShell execution.
@@ -4618,10 +4621,10 @@ index 00000000..263534ee
 +}
 diff --git a/scripts/wsl-powershell-chat.sh b/scripts/wsl-powershell-chat.sh
 new file mode 100755
-index 00000000..085535eb
+index 00000000..598f9faa
 --- /dev/null
 +++ b/scripts/wsl-powershell-chat.sh
-@@ -0,0 +1,19 @@
+@@ -0,0 +1,44 @@
 +#!/usr/bin/env sh
 +set -eu
 +
@@ -4631,7 +4634,32 @@ index 00000000..085535eb
 +  ps_script=$(wslpath -w "$ps_script")
 +fi
 +
-+powershell_bin="${AURACALL_WINDOWS_POWERSHELL:-powershell.exe}"
++resolve_powershell_bin() {
++  if [ -n "${AURACALL_WINDOWS_POWERSHELL:-}" ]; then
++    printf '%s\n' "$AURACALL_WINDOWS_POWERSHELL"
++    return
++  fi
++  if [ -n "${AURACALL_WINDOWS_POWERSHELL_PATH:-}" ]; then
++    printf '%s\n' "$AURACALL_WINDOWS_POWERSHELL_PATH"
++    return
++  fi
++  for candidate in \
++    /mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe \
++    /mnt/c/Program\ Files/PowerShell/7/pwsh.exe
++  do
++    if [ -x "$candidate" ]; then
++      printf '%s\n' "$candidate"
++      return
++    fi
++  done
++  if command -v powershell.exe >/dev/null 2>&1; then
++    command -v powershell.exe
++    return
++  fi
++  printf '%s\n' powershell.exe
++}
++
++powershell_bin=$(resolve_powershell_bin)
 +
 +if [ "$#" -gt 0 ]; then
 +  {

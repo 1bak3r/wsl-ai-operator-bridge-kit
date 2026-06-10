@@ -37,6 +37,9 @@ This note records the local Aura-Call state that produced this bridge kit.
     `powershellStdout=AURACALL_WINDOWS_POWERSHELL_OK`.
 - WSL can call Windows PowerShell through the JSONL bridge and preserve a
   stateful PowerShell working directory across commands.
+  - The WSL wrapper now falls back to
+    `/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe` when
+    `powershell.exe` is not on PATH.
 - The installed MCP `windows_powershell_probe` tool now has a same-session
   smoke check that starts `~/.local/bin/auracall-mcp`, lists the tool, calls
   `probe=get_location`, and can optionally verify a live Chrome DevTools port.
@@ -62,7 +65,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-705b489f Add agentic browser runtime bridge
+6947697e Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -96,6 +99,15 @@ All listed checks passed.
 An earlier live PowerShell probe smoke returned Windows PowerShell
 `5.1.26100.8521` and verified the managed Chrome DevTools endpoint on port
 `55855` as `Chrome/148.0.7778.218`.
+
+The latest bridge-kit JSONL PowerShell chat smoke returned `ok=true` for:
+
+```bash
+./scripts/wsl-powershell-chat.sh Get-Location
+```
+
+It resolved Windows PowerShell even though plain `powershell.exe` was not on
+the WSL PATH.
 
 The latest installed agent-host-readiness MCP smoke returned:
 

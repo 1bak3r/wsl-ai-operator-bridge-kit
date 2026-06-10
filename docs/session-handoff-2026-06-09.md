@@ -4,7 +4,7 @@
 
 - Aura-Call repo: `/home/bak3r/codex-research/corpora/repos/auracall`
 - Aura-Call branch: `codex/agentic-browser-runtime-bridge`
-- Aura-Call commit: `705b489f Add agentic browser runtime bridge`
+- Aura-Call commit: `6947697e Add agentic browser runtime bridge`
 - Bridge-kit repo: `/home/bak3r/codex-research/corpora/repos/wsl-ai-operator-bridge-kit`
 - Bridge-kit branch: `main`
 - Bridge-kit pushed commit: `8621655 Add safe Aura-Call MCP browser control`
@@ -25,6 +25,8 @@
 - Added WSL-to-Windows PowerShell bridge scripts:
   - `scripts/wsl-powershell-chat.sh`
   - `scripts/windows-powershell-chat.ps1`
+- Fixed the WSL wrapper to resolve Windows PowerShell by absolute Windows
+  mount path when `powershell.exe` is not on the WSL PATH.
 - Added bounded local-action MCP proof, including a WSL-to-Windows PowerShell action path.
 - Added composite read-only MCP agent-host preflight covering MCP runtime-runner
   registration, the WSL-to-Windows PowerShell bridge, and browser readiness.
@@ -64,6 +66,15 @@ is still disabled because there is no live managed ChatGPT browser:
 agent_host_readiness target=chatgpt ok=false browserState=no-live-managed-browser runtimeRunner=true windowsPowerShell=true agentAction=launch-login canDriveBrowser=false
 ```
 
+The bridge-kit JSONL PowerShell chat wrapper now also works directly:
+
+```bash
+./scripts/wsl-powershell-chat.sh Get-Location
+```
+
+It returned `ok=true` and Windows PowerShell `5.1.26100.8521` after falling
+back to the absolute Windows PowerShell path.
+
 The installed MCP browser-readiness smoke currently reports no live managed ChatGPT browser:
 
 ```text
@@ -90,14 +101,15 @@ pnpm run install:user-runtime
 pnpm run smoke:mcp-agent-host-readiness
 pnpm run smoke:mcp-browser-control
 pnpm run smoke:mcp-browser-readiness
+../wsl-ai-operator-bridge-kit/scripts/wsl-powershell-chat.sh Get-Location
 ```
 
 The bridge-kit patch artifact was also verified with:
 
 ```bash
-git worktree add --detach /tmp/auracall-patch-check-705b489f origin/main
-git -C /tmp/auracall-patch-check-705b489f am /home/bak3r/codex-research/corpora/repos/wsl-ai-operator-bridge-kit/patches/auracall-agentic-browser-runtime-bridge.patch
-git worktree remove /tmp/auracall-patch-check-705b489f
+git worktree add --detach /tmp/auracall-patch-check-6947697e origin/main
+git -C /tmp/auracall-patch-check-6947697e am /home/bak3r/codex-research/corpora/repos/wsl-ai-operator-bridge-kit/patches/auracall-agentic-browser-runtime-bridge.patch
+git worktree remove /tmp/auracall-patch-check-6947697e
 ```
 
 ## Remaining Work

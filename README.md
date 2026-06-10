@@ -97,6 +97,11 @@ Run MCPorter through the user Node runtime:
 ./scripts/run-node22-npx.sh mcporter list auracall --config examples/mcporter.auracall.json
 ```
 
+The wrapper also exports `AURACALL_BRIDGE_KIT` automatically and detects a
+sibling/local Aura-Call checkout for `AURACALL_REPO` when
+`dist/bin/auracall-mcp.js` is present, so `auracall-local` works from the
+bridge-kit root without extra environment variables on this machine.
+
 Run a local built Aura-Call MCP server from an Aura-Call checkout:
 
 ```bash

@@ -15,6 +15,9 @@
 
 - Installed and used `agent-browser` for read-only browser/CDP inspection.
 - Fixed Aura-Call MCP startup/runtime paths for WSL Node 22.
+- Fixed bridge-kit `run-node22-npx.sh` so `auracall-local` MCP checks work
+  from the bridge-kit root without manually exporting `AURACALL_BRIDGE_KIT` or
+  `AURACALL_REPO` when the local Aura-Call checkout is present.
 - Added MCP tools and smokes for:
   - `agent_host_readiness`
   - `browser_readiness`
@@ -75,6 +78,13 @@ The bridge-kit JSONL PowerShell chat wrapper now also works directly:
 It returned `ok=true` and Windows PowerShell `5.1.26100.8521` after falling
 back to the absolute Windows PowerShell path.
 
+The bridge-kit no-env local MCP path also works from the bridge-kit root:
+
+```bash
+./scripts/run-node22-npx.sh mcporter list auracall-local --config examples/mcporter.auracall.json
+./scripts/run-node22-npx.sh mcporter call auracall-local.agent_host_readiness target:chatgpt --config examples/mcporter.auracall.json
+```
+
 The installed MCP browser-readiness smoke currently reports no live managed ChatGPT browser:
 
 ```text
@@ -102,6 +112,7 @@ pnpm run smoke:mcp-agent-host-readiness
 pnpm run smoke:mcp-browser-control
 pnpm run smoke:mcp-browser-readiness
 ../wsl-ai-operator-bridge-kit/scripts/wsl-powershell-chat.sh Get-Location
+../wsl-ai-operator-bridge-kit/scripts/run-node22-npx.sh mcporter list auracall-local --config ../wsl-ai-operator-bridge-kit/examples/mcporter.auracall.json
 ```
 
 The bridge-kit patch artifact was also verified with:

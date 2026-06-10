@@ -17,6 +17,10 @@ This note records the local Aura-Call state that produced this bridge kit.
   - `windows_powershell_probe`
 - MCP client startup from WSL works when Node 22 is forced through an NVM-aware
   launcher.
+  - `scripts/run-node22-npx.sh` now exports `AURACALL_BRIDGE_KIT` and detects
+    the sibling/local Aura-Call checkout as `AURACALL_REPO` when
+    `dist/bin/auracall-mcp.js` exists, so `auracall-local` works from the
+    bridge-kit root without pre-exported env vars.
 - Same-session MCP runtime control works:
   - seed a direct runtime run;
   - call `runtime_control action:claim-local-run`;
@@ -108,6 +112,13 @@ The latest bridge-kit JSONL PowerShell chat smoke returned `ok=true` for:
 
 It resolved Windows PowerShell even though plain `powershell.exe` was not on
 the WSL PATH.
+
+The latest bridge-kit no-env local MCP checks passed from the bridge-kit root:
+
+```bash
+./scripts/run-node22-npx.sh mcporter list auracall-local --config examples/mcporter.auracall.json
+./scripts/run-node22-npx.sh mcporter call auracall-local.agent_host_readiness target:chatgpt --config examples/mcporter.auracall.json
+```
 
 The latest installed agent-host-readiness MCP smoke returned:
 

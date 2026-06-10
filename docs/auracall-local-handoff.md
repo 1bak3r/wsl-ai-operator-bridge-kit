@@ -9,6 +9,7 @@ This note records the local Aura-Call state that produced this bridge kit.
   - `~/.local/bin/auracall`
   - `~/.local/bin/auracall-mcp`
 - MCP tools added or verified:
+  - `agent_host_readiness`
   - `browser_control`
   - `browser_readiness`
   - `response_read`
@@ -39,6 +40,11 @@ This note records the local Aura-Call state that produced this bridge kit.
 - The installed MCP `windows_powershell_probe` tool now has a same-session
   smoke check that starts `~/.local/bin/auracall-mcp`, lists the tool, calls
   `probe=get_location`, and can optionally verify a live Chrome DevTools port.
+- The installed MCP `agent_host_readiness` tool now has a same-session smoke
+  check that starts `~/.local/bin/auracall-mcp`, lists the tool, calls
+  `agent_host_readiness`, and validates one read-only preflight covering MCP
+  runtime-runner registration, the WSL-to-Windows PowerShell bridge, and the
+  browser readiness gate.
 - The installed MCP `browser_readiness` tool now has a same-session smoke check
   that starts `~/.local/bin/auracall-mcp`, lists the tool, calls
   `browser_readiness`, and validates the structured readiness state returned
@@ -56,7 +62,7 @@ The local Aura-Call implementation was committed on branch
 `codex/agentic-browser-runtime-bridge` as:
 
 ```text
-3c44075a Add agentic browser runtime bridge
+705b489f Add agentic browser runtime bridge
 ```
 
 Pushing that branch to `ecochran76/auracall` was denied by GitHub for the
@@ -78,6 +84,7 @@ pnpm run build
 pnpm run smoke:mcp-runtime-control
 pnpm run smoke:mcp-local-action
 pnpm run smoke:mcp-local-action -- --windows-powershell-bridge
+pnpm run smoke:mcp-agent-host-readiness
 pnpm run smoke:mcp-browser-control
 pnpm run smoke:mcp-browser-readiness
 pnpm run smoke:mcp-windows-powershell-probe
@@ -89,6 +96,12 @@ All listed checks passed.
 An earlier live PowerShell probe smoke returned Windows PowerShell
 `5.1.26100.8521` and verified the managed Chrome DevTools endpoint on port
 `55855` as `Chrome/148.0.7778.218`.
+
+The latest installed agent-host-readiness MCP smoke returned:
+
+```text
+agent_host_readiness target=chatgpt ok=false browserState=no-live-managed-browser runtimeRunner=true windowsPowerShell=true agentAction=launch-login canDriveBrowser=false
+```
 
 The latest installed browser-readiness MCP smoke returned:
 
